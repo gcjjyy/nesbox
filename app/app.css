@@ -638,6 +638,8 @@ button {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 14px;
+  min-width: 0;
+  width: 100%;
   overflow: hidden;
 }
 
@@ -1180,15 +1182,18 @@ button {
 
   .workspace--player {
     grid-template-rows: minmax(0, 1fr);
-    padding: 6px 8px 4px;
+    padding: 5px 8px 4px;
   }
 
   .emulator-stage {
-    gap: 8px;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 6px;
   }
 
   .screen-bezel {
-    padding: 14px;
+    width: 100%;
+    height: auto;
+    padding: 10px;
     border-radius: 7px;
     box-shadow:
       inset 0 0 0 5px #151819,
@@ -1208,12 +1213,18 @@ button {
   }
 
   .player-command-bar {
-    min-height: 40px;
-    padding: 5px 10px;
+    grid-template-columns: auto minmax(0, 1fr) 36px;
+    min-height: 38px;
+    gap: 8px;
+    padding: 4px 8px;
   }
 
   .player-command-bar strong {
+    min-width: 0;
+    overflow: hidden;
     font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .player-command {
@@ -1306,11 +1317,15 @@ button {
   }
 
   .touch-controls {
-    grid-template-columns: 1fr 1fr;
-    gap: 6px 10px;
+    grid-template-columns: 150px 126px;
+    justify-content: space-between;
+    gap: 4px 8px;
     align-items: end;
-    min-height: 172px;
-    padding: 0 2px max(6px, env(safe-area-inset-bottom));
+    width: min(100%, 374px);
+    min-width: 0;
+    min-height: 166px;
+    margin: 0 auto;
+    padding: 0 0 max(6px, env(safe-area-inset-bottom));
   }
 
   .touch-controls__center {
@@ -1331,6 +1346,7 @@ button {
     grid-template-columns: repeat(3, 50px);
     grid-template-rows: repeat(3, 50px);
     justify-content: start;
+    width: 150px;
   }
 
   .touch-controls__cluster--face {
@@ -1340,6 +1356,7 @@ button {
     grid-template-rows: repeat(2, 58px);
     gap: 10px;
     justify-content: end;
+    width: 126px;
   }
 
   .touch-button {
