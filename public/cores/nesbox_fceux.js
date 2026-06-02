@@ -76,10 +76,16 @@
     }
     module.setMuted(false);
     module.setPaused(true);
+    normalizeCanvasStyle();
 
     let raf = 0;
     let running = false;
     let controllerBits = 0;
+
+    function normalizeCanvasStyle() {
+      options.canvas.style.setProperty("width", "100%", "important");
+      options.canvas.style.setProperty("height", "100%", "important");
+    }
 
     function delayFrame() {
       return new Promise((resolve) => requestAnimationFrame(() => resolve()));
@@ -102,6 +108,7 @@
         module.setControllerBits(controllerBits);
         module.update();
       }
+      normalizeCanvasStyle();
       if (wasPaused) module.setPaused(true);
     }
 
@@ -109,6 +116,7 @@
       if (!running) return;
       module.setControllerBits(controllerBits);
       module.update();
+      normalizeCanvasStyle();
       raf = requestAnimationFrame(frame);
     }
 
@@ -137,6 +145,7 @@
       },
       async loadRom(rom, name) {
         module.loadGame(rom, name);
+        normalizeCanvasStyle();
         module.setState(0);
         stopLoop();
         await delayFrame();

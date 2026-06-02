@@ -5,6 +5,7 @@ import { createCore, drawCoreMissing, makeUnavailableCore } from "../lib/core-lo
 import { emulatorById } from "../lib/emulator-registry";
 import type { GameEntry } from "../lib/game-types";
 import { fetchRomBytes } from "../lib/library-client";
+import type { SystemId } from "../lib/rom";
 import { loadLocalStateBytes, saveLocalStateBytes } from "../lib/state-storage";
 import type { UserSettings } from "../lib/storage";
 import { TouchControls } from "./TouchControls";
@@ -57,6 +58,15 @@ const GAMEPAD_BUTTON_MAP = new Map<number, NesboxButton>([
 
 const GAMEPAD_AXIS_THRESHOLD = 0.45;
 
+const SCREEN_SIZES: Record<"nes" | "snes", { width: number; height: number }> = {
+  nes: { width: 256, height: 240 },
+  snes: { width: 256, height: 224 },
+};
+
+function screenSizeForSystem(system: SystemId) {
+  return system === "snes" ? SCREEN_SIZES.snes : SCREEN_SIZES.nes;
+}
+
 function isDesktopChrome() {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
@@ -79,6 +89,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   const [phase, setPhase] = useState<EmulatorPhase>("idle");
   const [audioPromptVisible, setAudioPromptVisible] = useState(false);
   const [audioUnlocking, setAudioUnlocking] = useState(false);
+  const [screenSystem, setScreenSystem] = useState<SystemId>("nes");
 
   useImperativeHandle(ref, () => ({
     openGame,
@@ -180,6 +191,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     setAudioUnlocking(false);
     if (core) core.dispose();
     if (!updateUi) return;
+    setScreenSystem("nes");
     setPhase("idle");
     onRunningChange(false);
   }
@@ -213,6 +225,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     onRunningChange(false);
     onStatus(`${game.title} 로딩 중`);
     disposeCore();
+    setScreenSystem(game.system);
     gameRef.current = game;
     const profile = emulatorById(game.emulatorId);
     if (!profile) {
@@ -328,14 +341,16 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     coreRef.current?.setButton(0, button, pressed);
   }
 
+  const screenSize = screenSizeForSystem(screenSystem);
+
   return (
     <section
       ref={shellRef}
-      className={`emulator-stage ${settings.integerScale ? "emulator-stage--integer" : ""}`}
+      className={`emulator-stage emulator-stage--system-${screenSystem} ${settings.integerScale ? "emulator-stage--integer" : ""}`}
       onPointerDown={() => void unlockAudio(false)}
     >
       <div className="screen-bezel">
-        <canvas ref={canvasRef} className="game-canvas" width={768} height={672} />
+        <canvas ref={canvasRef} className="game-canvas" width={screenSize.width} height={screenSize.height} />
         {audioPromptVisible && (
           <div className="audio-unlock">
             <button

@@ -24,7 +24,7 @@ export function drawCoreMissing(canvas: HTMLCanvasElement, profile: EmulatorProf
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   const width = 768;
-  const height = profile.system === "nes" ? 672 : 648;
+  const height = profile.system === "snes" ? 672 : 720;
   canvas.width = width;
   canvas.height = height;
   ctx.fillStyle = "#101316";
