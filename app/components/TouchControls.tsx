@@ -18,10 +18,10 @@ const dpad: Array<[NesboxButton, string]> = [
 ];
 
 const face: Array<[NesboxButton, string]> = [
-  ["x", "X"],
   ["y", "Y"],
-  ["a", "A"],
+  ["x", "X"],
   ["b", "B"],
+  ["a", "A"],
 ];
 
 const ICON = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
@@ -37,21 +37,17 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
         ))}
       </div>
       <div className="touch-controls__center">
-        <div className="touch-controls__system">
-          <TouchButton button="select" label="SELECT" onButton={onButton} wide />
-          <TouchButton button="start" label="START" onButton={onButton} wide />
-        </div>
-        <div className="touch-controls__actions">
-          <button type="button" className="touch-action" onClick={onRunToggle} title={running ? "일시정지" : "실행"} aria-label={running ? "일시정지" : "실행"}>
-            {running ? <Pause {...ICON} /> : <Play {...ICON} />}
-          </button>
-          <button type="button" className="touch-action" onClick={onReset} title="리셋" aria-label="리셋">
-            <RotateCcw {...ICON} />
-          </button>
-          <button type="button" className="touch-action" onClick={onSave} title="상태 저장" aria-label="상태 저장">
-            <Save {...ICON} />
-          </button>
-        </div>
+        <TouchButton button="select" label="SELECT" onButton={onButton} wide />
+        <TouchButton button="start" label="START" onButton={onButton} wide />
+        <button type="button" className="touch-action" onClick={onRunToggle} title={running ? "일시정지" : "실행"} aria-label={running ? "일시정지" : "실행"}>
+          {running ? <Pause {...ICON} /> : <Play {...ICON} />}
+        </button>
+        <button type="button" className="touch-action" onClick={onReset} title="리셋" aria-label="리셋">
+          <RotateCcw {...ICON} />
+        </button>
+        <button type="button" className="touch-action" onClick={onSave} title="상태 저장" aria-label="상태 저장">
+          <Save {...ICON} />
+        </button>
       </div>
       <div className="touch-controls__cluster touch-controls__cluster--face">
         {face.map(([button, label]) => (
