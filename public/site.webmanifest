@@ -1,0 +1,15 @@
+{
+  "name": "Nesbox",
+  "short_name": "Nesbox",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#101316",
+  "theme_color": "#101316",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "64x64",
+      "type": "image/svg+xml"
+    }
+  ]
+}
