@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Maximize } from "lucide-react";
 import { useNavigate } from "react-router";
 import type { Route } from "./+types/play.$gameId";
 import { EmulatorStage, type EmulatorStageHandle } from "../components/EmulatorStage";
@@ -74,7 +75,7 @@ export default function Play({ loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell app-shell--player">
       <Toolbar
         mode="player"
         running={running}
@@ -88,6 +89,16 @@ export default function Play({ loaderData }: Route.ComponentProps) {
         onHelp={() => setHelpOpen(true)}
         onSettings={() => setSettingsOpen(true)}
       />
+      <div className="player-command-bar">
+        <button type="button" className="player-command player-command--back" onClick={backToLibrary} aria-label="라이브러리로 돌아가기">
+          <ArrowLeft size={16} strokeWidth={1.9} aria-hidden />
+          Library
+        </button>
+        <strong>{activeGame.title}</strong>
+        <button type="button" className="player-command" onClick={() => stageRef.current?.fullscreen()} aria-label="전체 화면">
+          <Maximize size={16} strokeWidth={1.9} aria-hidden />
+        </button>
+      </div>
       <main className="workspace workspace--player">
         <EmulatorStage
           ref={stageRef}

@@ -295,7 +295,16 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
           </div>
         )}
       </div>
-      <TouchControls enabled={settings.touchControls} onButton={onTouchButton} />
+      <TouchControls
+        enabled={settings.touchControls}
+        running={phase === "running"}
+        onButton={onTouchButton}
+        onRunToggle={toggleRun}
+        onReset={reset}
+        onSave={() => {
+          saveState().catch((err) => onStatus(err instanceof Error ? err.message : String(err)));
+        }}
+      />
     </section>
   );
 }
