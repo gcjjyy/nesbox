@@ -3,7 +3,8 @@ import type { NesboxButton, NesboxCore, EmulatorPhase } from "../lib/core-contra
 import { createCore, drawCoreMissing, makeUnavailableCore } from "../lib/core-loader";
 import { emulatorById } from "../lib/emulator-registry";
 import type { GameEntry } from "../lib/game-types";
-import { fetchRomBytes, loadStateBytes, saveStateBytes } from "../lib/library-client";
+import { fetchRomBytes } from "../lib/library-client";
+import { loadLocalStateBytes, saveLocalStateBytes } from "../lib/state-storage";
 import type { UserSettings } from "../lib/storage";
 import { TouchControls } from "./TouchControls";
 
@@ -217,14 +218,14 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
       return;
     }
     try {
-      const state = await loadStateBytes(game.id, game.emulatorId, 0);
+      const state = await loadLocalStateBytes(game.id, game.emulatorId, 0);
       if (isStaleLoad(seq)) {
         core.dispose();
         return;
       }
       if (state) {
         await core.loadState(state);
-        onStatus("저장된 상태를 복원했습니다.");
+        onStatus("이 브라우저에 저장된 상태를 복원했습니다.");
       }
     } catch (err) {
       onStatus(err instanceof Error ? err.message : "상태 복원 실패");
@@ -264,8 +265,8 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     const game = gameRef.current;
     if (!core || !game) return;
     const bytes = await core.saveState();
-    await saveStateBytes(game.id, game.emulatorId, 0, bytes);
-    onStatus(`슬롯 0 저장 완료 (${Math.round(bytes.byteLength / 1024)} KB)`);
+    await saveLocalStateBytes(game.id, game.emulatorId, 0, bytes);
+    onStatus(`이 브라우저의 슬롯 0 저장 완료 (${Math.round(bytes.byteLength / 1024)} KB)`);
   }
 
   async function fullscreen() {
