@@ -1,4 +1,5 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
+import { Volume2 } from "lucide-react";
 import type { NesboxButton, NesboxCore, EmulatorPhase } from "../lib/core-contract";
 import { createCore, drawCoreMissing, makeUnavailableCore } from "../lib/core-loader";
 import { emulatorById } from "../lib/emulator-registry";
@@ -56,6 +57,16 @@ const GAMEPAD_BUTTON_MAP = new Map<number, NesboxButton>([
 
 const GAMEPAD_AXIS_THRESHOLD = 0.45;
 
+function isDesktopChrome() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return (
+    /\bChrome\//.test(ua) &&
+    !/\b(Edg|OPR|Opera|SamsungBrowser|CriOS)\//.test(ua) &&
+    !/\b(Mobile|Android|iPhone|iPad|iPod)\b/.test(ua)
+  );
+}
+
 export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChange, ref }: EmulatorStageProps) {
   const shellRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -64,7 +75,10 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   const disposedRef = useRef(false);
   const loadSeqRef = useRef(0);
   const gamepadButtonsRef = useRef(new Set<NesboxButton>());
+  const audioPromptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [phase, setPhase] = useState<EmulatorPhase>("idle");
+  const [audioPromptVisible, setAudioPromptVisible] = useState(false);
+  const [audioUnlocking, setAudioUnlocking] = useState(false);
 
   useImperativeHandle(ref, () => ({
     openGame,
@@ -154,6 +168,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   function shutdownCore(updateUi = true) {
     disposedRef.current = true;
     loadSeqRef.current += 1;
+    clearAudioPromptTimer();
     disposeCore(updateUi);
   }
 
@@ -161,10 +176,27 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     const core = coreRef.current;
     coreRef.current = null;
     gameRef.current = null;
+    setAudioPromptVisible(false);
+    setAudioUnlocking(false);
     if (core) core.dispose();
     if (!updateUi) return;
     setPhase("idle");
     onRunningChange(false);
+  }
+
+  function clearAudioPromptTimer() {
+    if (!audioPromptTimerRef.current) return;
+    clearTimeout(audioPromptTimerRef.current);
+    audioPromptTimerRef.current = null;
+  }
+
+  function scheduleAudioPrompt(seq: number) {
+    clearAudioPromptTimer();
+    audioPromptTimerRef.current = setTimeout(() => {
+      audioPromptTimerRef.current = null;
+      if (isStaleLoad(seq) || isDesktopChrome()) return;
+      setAudioPromptVisible(true);
+    }, 1200);
   }
 
   function isStaleLoad(seq: number) {
@@ -234,6 +266,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     setPhase("running");
     onRunningChange(true);
     onStatus("실행 중");
+    scheduleAudioPrompt(seq);
   }
 
   function toggleRun() {
@@ -275,8 +308,23 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     await node.requestFullscreen();
   }
 
+  async function unlockAudio(showStatus = true) {
+    const core = coreRef.current;
+    if (!core?.resumeAudio) return;
+    setAudioUnlocking(true);
+    try {
+      await core.resumeAudio();
+      setAudioPromptVisible(false);
+      if (showStatus) onStatus("오디오 준비 완료");
+    } catch (err) {
+      if (showStatus) onStatus(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAudioUnlocking(false);
+    }
+  }
+
   function onTouchButton(button: NesboxButton, pressed: boolean) {
-    if (pressed) coreRef.current?.resumeAudio?.();
+    if (pressed) void unlockAudio(false);
     coreRef.current?.setButton(0, button, pressed);
   }
 
@@ -284,10 +332,24 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     <section
       ref={shellRef}
       className={`emulator-stage ${settings.integerScale ? "emulator-stage--integer" : ""}`}
-      onPointerDown={() => coreRef.current?.resumeAudio?.()}
+      onPointerDown={() => void unlockAudio(false)}
     >
       <div className="screen-bezel">
         <canvas ref={canvasRef} className="game-canvas" width={768} height={672} />
+        {audioPromptVisible && (
+          <div className="audio-unlock">
+            <button
+              type="button"
+              className="audio-unlock__button"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={() => void unlockAudio()}
+              disabled={audioUnlocking}
+            >
+              <Volume2 size={18} strokeWidth={1.8} aria-hidden />
+              <span>{audioUnlocking ? "음소거 해제 중" : "탭하여 음소거 해제"}</span>
+            </button>
+          </div>
+        )}
         {phase === "idle" && (
           <div className="stage-empty">
             <strong>Load ROM</strong>

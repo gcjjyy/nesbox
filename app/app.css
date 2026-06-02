@@ -696,6 +696,49 @@ button {
   font-size: 13px;
 }
 
+.audio-unlock {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 6;
+}
+
+.audio-unlock__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--red) 55%, var(--line));
+  border-radius: 7px;
+  background: rgba(16, 19, 22, 0.92);
+  color: var(--cream);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow:
+    0 14px 32px -16px rgba(0, 0, 0, 0.78),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.audio-unlock__button:hover:not(:disabled) {
+  background: var(--panel-2);
+  border-color: var(--red);
+}
+
+.audio-unlock__button:focus-visible {
+  outline: none;
+  border-color: var(--red);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--red) 38%, transparent),
+    0 14px 32px -16px rgba(0, 0, 0, 0.78);
+}
+
+.audio-unlock__button:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
 .touch-controls {
   display: grid;
   grid-template-columns: minmax(190px, 1fr) minmax(190px, auto) minmax(190px, 1fr);
@@ -1135,6 +1178,17 @@ button {
       inset 0 0 0 5px #151819,
       inset 0 0 0 6px #2a3030,
       0 18px 50px var(--shadow);
+  }
+
+  .audio-unlock {
+    top: 12px;
+    left: 12px;
+  }
+
+  .audio-unlock__button {
+    height: 38px;
+    padding: 0 12px;
+    font-size: 12px;
   }
 
   .player-command-bar {
