@@ -764,6 +764,11 @@ button {
   min-height: 168px;
   padding: 0 8px 4px;
   touch-action: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
 }
 
 .touch-controls__cluster {
@@ -848,6 +853,9 @@ button {
   background: rgba(216, 222, 213, 0.09);
   color: var(--cream);
   cursor: pointer;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
 }
 
 .touch-button {
@@ -861,9 +869,14 @@ button {
   font-size: 17px;
   font-weight: 700;
   cursor: pointer;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
 }
 
-.touch-button:active {
+.touch-button:active,
+.touch-button--pressed {
   transform: translateY(1px);
   background: rgba(217, 72, 65, 0.36);
 }
