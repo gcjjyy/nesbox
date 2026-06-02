@@ -77,6 +77,12 @@ function isDesktopChrome() {
   );
 }
 
+function hasTouchSurface() {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  if (navigator.maxTouchPoints > 0) return true;
+  return window.matchMedia?.("(pointer: coarse)").matches ?? false;
+}
+
 export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChange, ref }: EmulatorStageProps) {
   const shellRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -90,6 +96,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   const [audioPromptVisible, setAudioPromptVisible] = useState(false);
   const [audioUnlocking, setAudioUnlocking] = useState(false);
   const [screenSystem, setScreenSystem] = useState<SystemId>("nes");
+  const [touchSurface, setTouchSurface] = useState(false);
 
   useImperativeHandle(ref, () => ({
     openGame,
@@ -174,6 +181,14 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   useEffect(() => {
     disposedRef.current = false;
     return () => shutdownCore(false);
+  }, []);
+
+  useEffect(() => {
+    const query = window.matchMedia?.("(pointer: coarse)");
+    const update = () => setTouchSurface(hasTouchSurface());
+    update();
+    query?.addEventListener("change", update);
+    return () => query?.removeEventListener("change", update);
   }, []);
 
   function shutdownCore(updateUi = true) {
@@ -373,7 +388,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
         )}
       </div>
       <TouchControls
-        enabled={settings.touchControls}
+        enabled={settings.touchControls && touchSurface}
         running={phase === "running"}
         onButton={onTouchButton}
         onRunToggle={toggleRun}

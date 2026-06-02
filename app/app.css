@@ -875,6 +875,12 @@ button {
   font-size: 10px;
 }
 
+@media (pointer: fine) and (hover: hover) {
+  .touch-controls {
+    display: none;
+  }
+}
+
 .help-dialog {
   display: grid;
   width: min(720px, 100%);
