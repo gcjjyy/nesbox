@@ -641,6 +641,10 @@ button {
   min-width: 0;
   width: 100%;
   overflow: hidden;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
 }
 
 .emulator-stage--system-nes {
@@ -764,6 +768,16 @@ button {
   min-height: 168px;
   padding: 0 8px 4px;
   touch-action: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
+}
+
+.touch-controls *,
+.touch-controls *::before,
+.touch-controls *::after {
   user-select: none;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;

@@ -30,6 +30,7 @@ const ICON = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
 type TouchPoint = Pick<Touch, "identifier" | "clientX" | "clientY">;
 
 export function TouchControls({ enabled, running, onButton, onRunToggle, onReset, onSave }: TouchControlsProps) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const activePointersRef = useRef(new Map<number, NesboxButton>());
   const pressedCountsRef = useRef(new Map<NesboxButton, number>());
   const onButtonRef = useRef(onButton);
@@ -46,8 +47,6 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
       pressedCountsRef.current.clear();
     };
   }, []);
-
-  if (!enabled) return null;
 
   function press(button: NesboxButton) {
     const count = pressedCountsRef.current.get(button) ?? 0;
@@ -74,8 +73,31 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
   }
 
   function buttonAt(x: number, y: number): NesboxButton | null {
-    const target = document.elementFromPoint(x, y)?.closest<HTMLButtonElement>("[data-touch-button]");
-    return (target?.dataset.touchButton as NesboxButton | undefined) ?? null;
+    const root = rootRef.current;
+    if (!root) return null;
+
+    const dpadNode = root.querySelector<HTMLElement>(".touch-controls__cluster--dpad");
+    if (dpadNode) {
+      const dpadRect = dpadNode.getBoundingClientRect();
+      if (x >= dpadRect.left && x <= dpadRect.right && y >= dpadRect.top && y <= dpadRect.bottom) {
+        const col = Math.min(2, Math.max(0, Math.floor(((x - dpadRect.left) / dpadRect.width) * 3)));
+        const row = Math.min(2, Math.max(0, Math.floor(((y - dpadRect.top) / dpadRect.height) * 3)));
+        if (col === 1 && row === 0) return "up";
+        if (col === 0 && row === 1) return "left";
+        if (col === 2 && row === 1) return "right";
+        if (col === 1 && row === 2) return "down";
+      }
+    }
+
+    for (const target of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-touch-button]"))) {
+      const rect = target.getBoundingClientRect();
+      const hitSlop = target.closest(".touch-controls__cluster--face") ? 8 : 0;
+      if (x >= rect.left - hitSlop && x <= rect.right + hitSlop && y >= rect.top - hitSlop && y <= rect.bottom + hitSlop) {
+        return (target.dataset.touchButton as NesboxButton | undefined) ?? null;
+      }
+    }
+
+    return null;
   }
 
   function setPointerButton(pointerId: number, next: NesboxButton | null) {
@@ -102,8 +124,72 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
     releasePointer(touch.identifier);
   }
 
+  useEffect(() => {
+    if (!enabled) return;
+    const root = rootRef.current;
+    if (!root) return;
+
+    const preventControlDefault = (event: Event) => {
+      event.preventDefault();
+    };
+
+    const onTouchStart = (event: TouchEvent) => {
+      let handled = false;
+      for (const touch of Array.from(event.changedTouches)) {
+        const next = buttonAt(touch.clientX, touch.clientY);
+        if (!next) continue;
+        handled = true;
+        setPointerButton(touch.identifier, next);
+      }
+      if (handled) event.preventDefault();
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      let handled = false;
+      for (const touch of Array.from(event.changedTouches)) {
+        if (!activePointersRef.current.has(touch.identifier)) continue;
+        handled = true;
+        setTouchButton(touch);
+      }
+      if (handled) event.preventDefault();
+    };
+
+    const onTouchEnd = (event: TouchEvent) => {
+      let handled = false;
+      for (const touch of Array.from(event.changedTouches)) {
+        if (!activePointersRef.current.has(touch.identifier)) continue;
+        handled = true;
+        releaseTouch(touch);
+      }
+      if (handled) event.preventDefault();
+    };
+
+    root.addEventListener("touchstart", onTouchStart, { passive: false });
+    root.addEventListener("touchmove", onTouchMove, { passive: false });
+    root.addEventListener("touchend", onTouchEnd, { passive: false });
+    root.addEventListener("touchcancel", onTouchEnd, { passive: false });
+    root.addEventListener("contextmenu", preventControlDefault);
+    root.addEventListener("selectstart", preventControlDefault);
+    root.addEventListener("dragstart", preventControlDefault);
+    root.addEventListener("gesturestart", preventControlDefault);
+
+    return () => {
+      root.removeEventListener("touchstart", onTouchStart);
+      root.removeEventListener("touchmove", onTouchMove);
+      root.removeEventListener("touchend", onTouchEnd);
+      root.removeEventListener("touchcancel", onTouchEnd);
+      root.removeEventListener("contextmenu", preventControlDefault);
+      root.removeEventListener("selectstart", preventControlDefault);
+      root.removeEventListener("dragstart", preventControlDefault);
+      root.removeEventListener("gesturestart", preventControlDefault);
+    };
+  });
+
+  if (!enabled) return null;
+
   return (
     <div
+      ref={rootRef}
       className="touch-controls"
       aria-label="터치 컨트롤러"
       onPointerDown={(event) => {
@@ -136,31 +222,6 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
       onPointerCancel={(event) => {
         if (event.pointerType === "touch") return;
         releasePointer(event.pointerId);
-      }}
-      onTouchStart={(event) => {
-        let handled = false;
-        for (const touch of Array.from(event.changedTouches)) {
-          const next = buttonAt(touch.clientX, touch.clientY);
-          if (!next) continue;
-          handled = true;
-          setPointerButton(touch.identifier, next);
-        }
-        if (handled) event.preventDefault();
-      }}
-      onTouchMove={(event) => {
-        let handled = false;
-        for (const touch of Array.from(event.changedTouches)) {
-          if (!activePointersRef.current.has(touch.identifier)) continue;
-          handled = true;
-          setTouchButton(touch);
-        }
-        if (handled) event.preventDefault();
-      }}
-      onTouchEnd={(event) => {
-        for (const touch of Array.from(event.changedTouches)) releaseTouch(touch);
-      }}
-      onTouchCancel={(event) => {
-        for (const touch of Array.from(event.changedTouches)) releaseTouch(touch);
       }}
       onSelect={(event) => event.preventDefault()}
       onSelectCapture={(event) => event.preventDefault()}
