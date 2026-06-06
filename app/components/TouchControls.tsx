@@ -31,7 +31,7 @@ type TouchPoint = Pick<Touch, "identifier" | "clientX" | "clientY">;
 
 export function TouchControls({ enabled, running, onButton, onRunToggle, onReset, onSave }: TouchControlsProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const activePointersRef = useRef(new Map<number, NesboxButton>());
+  const activePointersRef = useRef(new Map<number, NesboxButton | null>());
   const pressedCountsRef = useRef(new Map<NesboxButton, number>());
   const onButtonRef = useRef(onButton);
   const [pressedButtons, setPressedButtons] = useState<Set<NesboxButton>>(() => new Set());
@@ -101,6 +101,7 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
   }
 
   function setPointerButton(pointerId: number, next: NesboxButton | null) {
+    if (!activePointersRef.current.has(pointerId)) activePointersRef.current.set(pointerId, null);
     const prev = activePointersRef.current.get(pointerId) ?? null;
     if (prev === next) return;
     if (prev) release(prev);
@@ -108,12 +109,14 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
       activePointersRef.current.set(pointerId, next);
       press(next);
     } else {
-      activePointersRef.current.delete(pointerId);
+      activePointersRef.current.set(pointerId, null);
     }
   }
 
   function releasePointer(pointerId: number) {
-    setPointerButton(pointerId, null);
+    const prev = activePointersRef.current.get(pointerId) ?? null;
+    if (prev) release(prev);
+    activePointersRef.current.delete(pointerId);
   }
 
   function setTouchButton(touch: TouchPoint) {
