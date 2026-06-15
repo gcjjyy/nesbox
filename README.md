@@ -32,3 +32,8 @@ ROM files, SQLite databases, and save-state data must stay outside git.
 The server SQLite database stores the shared game library. Per-user save states
 are stored in each browser's IndexedDB so public users do not overwrite one
 another's saves.
+
+## License
+
+Nesbox is licensed under the GNU General Public License version 2. See
+`LICENSE` for the full license text.
