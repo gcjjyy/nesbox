@@ -6,6 +6,12 @@ import {
   Volume2,
 } from "lucide-react";
 import { version } from "../../package.json";
+import {
+  DOS_MUSEUM_URL,
+  SITE_BRAND_PREFIX,
+  SITE_BRAND_PRODUCT,
+  SITE_NAME,
+} from "../lib/site-metadata";
 
 const ICON = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
 
@@ -31,9 +37,17 @@ export function Toolbar({
 }: ToolbarProps) {
   return (
     <header className="toolbar">
-      <div className="toolbar__brand" aria-label="Nesbox">
+      <div className="toolbar__brand" aria-label={SITE_NAME}>
         <Gamepad2 size={17} strokeWidth={1.9} aria-hidden />
-        <span>NESBOX</span>
+        <a
+          className="toolbar__brand-link"
+          href={DOS_MUSEUM_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {SITE_BRAND_PREFIX}
+        </a>
+        <span>{SITE_BRAND_PRODUCT}</span>
         <small>v{version}</small>
       </div>
       <div className="toolbar__actions">

@@ -1,6 +1,6 @@
 {
-  "name": "Nesbox",
-  "short_name": "Nesbox",
+  "name": "도스박물관 NESBOX",
+  "short_name": "도스박물관 NESBOX",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#101316",

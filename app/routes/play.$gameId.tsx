@@ -9,10 +9,11 @@ import { SettingsSheet } from "../components/SettingsSheet";
 import { Toolbar } from "../components/Toolbar";
 import { listGames as listClientGames, touchGame } from "../lib/library-client";
 import type { GameEntry } from "../lib/game-types";
+import { SITE_NAME } from "../lib/site-metadata";
 import { readSettings, writeSettings, type UserSettings } from "../lib/storage";
 
 export function meta({ data }: Route.MetaArgs) {
-  const title = data?.game ? `${data.game.title} · Nesbox` : "Nesbox";
+  const title = data?.game ? `${data.game.title} · ${SITE_NAME}` : SITE_NAME;
   return [{ title }];
 }
 

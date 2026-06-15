@@ -89,6 +89,19 @@ button {
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
+}
+
+.toolbar__brand-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.toolbar__brand-link:hover,
+.toolbar__brand-link:focus-visible {
+  color: var(--red-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .toolbar__brand small {
@@ -230,7 +243,7 @@ button {
 
 .workspace--library .game-library {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   width: min(1180px, 100%);
   min-height: 0;
   margin: 0 auto;
@@ -303,6 +316,31 @@ button {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.game-library__footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.game-library__footer a {
+  color: var(--cream);
+  text-decoration: none;
+}
+
+.game-library__footer a:hover,
+.game-library__footer a:focus-visible {
+  color: var(--red-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .library-table {

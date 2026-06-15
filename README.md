@@ -1,4 +1,4 @@
-# Nesbox
+# 도스박물관 NESBOX
 
 Personal browser emulator library for NES and future console cores.
 
@@ -35,5 +35,5 @@ another's saves.
 
 ## License
 
-Nesbox is licensed under the GNU General Public License version 2. See
+도스박물관 NESBOX is licensed under the GNU General Public License version 2. See
 `LICENSE` for the full license text.

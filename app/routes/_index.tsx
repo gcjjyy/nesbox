@@ -12,6 +12,7 @@ import {
   uploadGame,
 } from "../lib/library-client";
 import type { GameEntry } from "../lib/game-types";
+import { SITE_NAME } from "../lib/site-metadata";
 import {
   readSettings,
   writeSettings,
@@ -20,8 +21,8 @@ import {
 
 export function meta(_: Route.MetaArgs) {
   return [
-    { title: "Nesbox" },
-    { name: "description", content: "Personal browser emulator library for NES and SNES games." },
+    { title: SITE_NAME },
+    { name: "description", content: "도스박물관 NESBOX browser emulator library for NES and SNES games." },
   ];
 }
 

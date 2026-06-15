@@ -2,6 +2,12 @@ import { Database, Play, Plus, Trash2 } from "lucide-react";
 import { emulatorById } from "../lib/emulator-registry";
 import { displaySystem, formatBytes } from "../lib/rom";
 import type { GameEntry } from "../lib/game-types";
+import {
+  COPYRIGHT_TEXT,
+  DOS_MUSEUM_URL,
+  SITE_BRAND_PREFIX,
+  SITE_BRAND_PRODUCT,
+} from "../lib/site-metadata";
 
 export interface GameLibraryProps {
   games: GameEntry[];
@@ -75,6 +81,15 @@ export function GameLibrary({ games, importing, status, onAdd, onImportOpenEmu, 
           </div>
         </div>
       )}
+
+      <footer className="game-library__footer">
+        <span>{COPYRIGHT_TEXT}</span>
+        <span aria-hidden>·</span>
+        <a href={DOS_MUSEUM_URL} target="_blank" rel="noopener noreferrer">
+          {SITE_BRAND_PREFIX}
+        </a>
+        <span>{SITE_BRAND_PRODUCT}</span>
+      </footer>
     </section>
   );
 }
