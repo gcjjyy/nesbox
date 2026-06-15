@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type Ref } from "react";
 import { Volume2 } from "lucide-react";
 import type { NesboxButton, NesboxCore, EmulatorPhase } from "../lib/core-contract";
 import { createCore, drawCoreMissing, makeUnavailableCore } from "../lib/core-loader";
@@ -96,6 +96,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   const [audioPromptVisible, setAudioPromptVisible] = useState(false);
   const [audioUnlocking, setAudioUnlocking] = useState(false);
   const [screenSystem, setScreenSystem] = useState<SystemId>("nes");
+  const [screenPixels, setScreenPixels] = useState(screenSizeForSystem("nes"));
   const [touchSurface, setTouchSurface] = useState(false);
 
   useImperativeHandle(ref, () => ({
@@ -191,6 +192,35 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     return () => query?.removeEventListener("change", update);
   }, []);
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let raf = 0;
+    let stopped = false;
+
+    const update = () => syncScreenPixelsFromCanvas(canvas);
+    const observer = new MutationObserver(update);
+    observer.observe(canvas, { attributes: true, attributeFilter: ["height", "style", "width"] });
+
+    const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    resizeObserver?.observe(canvas);
+
+    const startedAt = performance.now();
+    const tick = () => {
+      update();
+      if (!stopped && performance.now() - startedAt < 3000) raf = requestAnimationFrame(tick);
+    };
+    tick();
+
+    return () => {
+      stopped = true;
+      if (raf) cancelAnimationFrame(raf);
+      observer.disconnect();
+      resizeObserver?.disconnect();
+    };
+  }, []);
+
   function shutdownCore(updateUi = true) {
     disposedRef.current = true;
     loadSeqRef.current += 1;
@@ -207,8 +237,15 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     if (core) core.dispose();
     if (!updateUi) return;
     setScreenSystem("nes");
+    setScreenPixels(screenSizeForSystem("nes"));
     setPhase("idle");
     onRunningChange(false);
+  }
+
+  function syncScreenPixelsFromCanvas(canvas: HTMLCanvasElement) {
+    const next = readScreenPixelsFromCanvas(canvas);
+    if (!next) return;
+    setScreenPixels((prev) => (prev.width === next.width && prev.height === next.height ? prev : next));
   }
 
   function clearAudioPromptTimer() {
@@ -241,6 +278,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     onStatus(`${game.title} 로딩 중`);
     disposeCore();
     setScreenSystem(game.system);
+    setScreenPixels(screenSizeForSystem(game.system));
     gameRef.current = game;
     const profile = emulatorById(game.emulatorId);
     if (!profile) {
@@ -277,6 +315,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
       core.dispose();
       return;
     }
+    if (canvasRef.current) syncScreenPixelsFromCanvas(canvasRef.current);
     try {
       const state = await loadLocalStateBytes(game.id, game.emulatorId, 0);
       if (isStaleLoad(seq)) {
@@ -357,35 +396,45 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   }
 
   const screenSize = screenSizeForSystem(screenSystem);
+  const screenStyle = {
+    "--screen-aspect": `${screenPixels.width} / ${screenPixels.height}`,
+    "--screen-width": screenPixels.width,
+    "--screen-height": screenPixels.height,
+  } as CSSProperties;
 
   return (
     <section
       ref={shellRef}
       className={`emulator-stage emulator-stage--system-${screenSystem} ${settings.integerScale ? "emulator-stage--integer" : ""}`}
+      style={screenStyle}
       onPointerDown={() => void unlockAudio(false)}
     >
-      <div className="screen-bezel">
-        <canvas ref={canvasRef} className="game-canvas" width={screenSize.width} height={screenSize.height} />
-        {audioPromptVisible && (
-          <div className="audio-unlock">
-            <button
-              type="button"
-              className="audio-unlock__button"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={() => void unlockAudio()}
-              disabled={audioUnlocking}
-            >
-              <Volume2 size={18} strokeWidth={1.8} aria-hidden />
-              <span>{audioUnlocking ? "음소거 해제 중" : "탭하여 음소거 해제"}</span>
-            </button>
+      <div className="screen-slot">
+        <div className="screen-bezel">
+          <div className="screen-viewport">
+            <canvas ref={canvasRef} className="game-canvas" width={screenSize.width} height={screenSize.height} />
+            {phase === "idle" && (
+              <div className="stage-empty">
+                <strong>Load ROM</strong>
+                <span>NES 또는 SNES 파일을 브라우저에서 직접 실행합니다.</span>
+              </div>
+            )}
           </div>
-        )}
-        {phase === "idle" && (
-          <div className="stage-empty">
-            <strong>Load ROM</strong>
-            <span>NES 또는 SNES 파일을 브라우저에서 직접 실행합니다.</span>
-          </div>
-        )}
+          {audioPromptVisible && (
+            <div className="audio-unlock">
+              <button
+                type="button"
+                className="audio-unlock__button"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => void unlockAudio()}
+                disabled={audioUnlocking}
+              >
+                <Volume2 size={18} strokeWidth={1.8} aria-hidden />
+                <span>{audioUnlocking ? "음소거 해제 중" : "탭하여 음소거 해제"}</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       <TouchControls
         enabled={settings.touchControls && touchSurface}
@@ -399,4 +448,20 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
       />
     </section>
   );
+}
+
+function readScreenPixelsFromCanvas(canvas: HTMLCanvasElement) {
+  const styleWidth = parsePixelSize(canvas.style.width);
+  const styleHeight = parsePixelSize(canvas.style.height);
+  const width = styleWidth ?? canvas.width;
+  const height = styleHeight ?? canvas.height;
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+  return { width: Math.round(width), height: Math.round(height) };
+}
+
+function parsePixelSize(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed.endsWith("px")) return null;
+  const parsed = Number.parseFloat(trimmed);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
