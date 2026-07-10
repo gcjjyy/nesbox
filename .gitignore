@@ -2,6 +2,7 @@ node_modules/
 build/
 .react-router/
 
+.env
 data/
 *.sqlite
 *.sqlite-shm
