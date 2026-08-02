@@ -57,7 +57,7 @@ export class AudioSession {
       this.setSnapshot("running");
       return true;
     } catch {
-      this.setSnapshot("locked");
+      this.setSnapshot(this.stateFromContext());
       return false;
     } finally {
       this.unlocking = false;

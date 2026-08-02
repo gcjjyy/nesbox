@@ -54,6 +54,17 @@ describe("AudioSession", () => {
     expect(session.getSnapshot()).toBe("locked");
   });
 
+  it("preserves suspension after a rejected retry following explicit unlock", async () => {
+    const { context, session } = makeSession();
+    await session.unlock();
+    context.state = "suspended";
+    context.dispatchEvent(new Event("statechange"));
+    context.resumeError = new Error("blocked");
+
+    await expect(session.unlock()).resolves.toBe(false);
+    expect(session.getSnapshot()).toBe("suspended");
+  });
+
   it("reuses the same context across consumers and emits later suspension", async () => {
     const { context, session } = makeSession();
     const states: string[] = [];
