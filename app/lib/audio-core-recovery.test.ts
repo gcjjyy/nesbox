@@ -3,10 +3,12 @@ import { recoverAudioCore } from "./audio-core-recovery";
 
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
-  const promise = new Promise<T>((resolvePromise) => {
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
     resolve = resolvePromise;
+    reject = rejectPromise;
   });
-  return { promise, resolve };
+  return { promise, reject, resolve };
 }
 
 describe("recoverAudioCore", () => {
@@ -47,5 +49,37 @@ describe("recoverAudioCore", () => {
       isCurrent: () => true,
       reload: async () => "stale",
     })).resolves.toEqual({ kind: "stale" });
+  });
+
+  it("does not publish an unlock failure after the recovery is externally invalidated", async () => {
+    const unlock = deferred<boolean>();
+    let current = true;
+    const recovery = recoverAudioCore({
+      unlock: () => unlock.promise,
+      isCurrent: () => current,
+      reload: async () => true,
+    });
+
+    current = false;
+    unlock.reject(new Error("blocked"));
+
+    await expect(recovery).resolves.toEqual({ kind: "stale" });
+  });
+
+  it("does not publish a retry failure when reload rejects after external invalidation", async () => {
+    const reload = deferred<boolean>();
+    const reloadCore = vi.fn(() => reload.promise);
+    let current = true;
+    const recovery = recoverAudioCore({
+      unlock: async () => true,
+      isCurrent: () => current,
+      reload: reloadCore,
+    });
+    await vi.waitFor(() => expect(reloadCore).toHaveBeenCalledTimes(1));
+
+    current = false;
+    reload.reject(new Error("ROM load failed"));
+
+    await expect(recovery).resolves.toEqual({ kind: "stale" });
   });
 });

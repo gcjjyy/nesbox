@@ -17,16 +17,17 @@ export async function recoverAudioCore(
   try {
     unlocked = await options.unlock();
   } catch (error) {
-    return { kind: "unlock-failed", error };
+    return options.isCurrent() ? { kind: "unlock-failed", error } : { kind: "stale" };
   }
-  if (!unlocked) return { kind: "unlock-failed" };
   if (!options.isCurrent()) return { kind: "stale" };
+  if (!unlocked) return { kind: "unlock-failed" };
 
   try {
     const reloaded = await options.reload();
+    if (!options.isCurrent()) return { kind: "stale" };
     if (reloaded === "stale") return { kind: "stale" };
     return reloaded ? { kind: "recovered" } : { kind: "retry-failed" };
   } catch (error) {
-    return { kind: "retry-failed", error };
+    return options.isCurrent() ? { kind: "retry-failed", error } : { kind: "stale" };
   }
 }
