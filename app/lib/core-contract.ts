@@ -33,6 +33,7 @@ export interface CoreMetadata {
 export interface CoreRuntimeOptions {
   canvas: HTMLCanvasElement;
   wasmUrl: string;
+  audioContext: AudioContext;
   onVideoFrame?: (width: number, height: number) => void;
   onAudioState?: (running: boolean) => void;
   onLog?: (line: string) => void;

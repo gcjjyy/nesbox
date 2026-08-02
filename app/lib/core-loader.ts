@@ -1,4 +1,5 @@
 import type { CoreMetadata, NesboxButton, NesboxCore, NesboxCoreFactory } from "./core-contract";
+import { audioSession } from "./audio-session";
 import { emulatorById, EMULATOR_PROFILES, type EmulatorProfile } from "./emulator-registry";
 import type { EmulatorId } from "./rom";
 
@@ -16,6 +17,7 @@ export async function createCore(emulatorId: EmulatorId, canvas: HTMLCanvasEleme
   return factory({
     canvas,
     wasmUrl: target.wasmUrl,
+    audioContext: audioSession.getContext(),
     onLog: (line) => console.debug(`[${emulatorId}] ${line}`),
   });
 }

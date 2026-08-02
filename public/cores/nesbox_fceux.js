@@ -56,6 +56,7 @@
     const FCEUX = await loadFceuxScript();
     const module = await FCEUX({
       canvas: options.canvas,
+      _audioContext: options.audioContext,
       locateFile(path) {
         if (path.endsWith(".wasm")) return options.wasmUrl || "/cores/vendor/fceux.wasm";
         return `/cores/vendor/${path}`;
@@ -123,7 +124,6 @@
     function startLoop() {
       if (running) return;
       running = true;
-      resumeAudio();
       module.setPaused(false);
       raf = requestAnimationFrame(frame);
     }
@@ -196,13 +196,6 @@
           }
         } catch (_err) {
           // Ignore WebAudio shutdown differences across browsers.
-        }
-        try {
-          if (module._audioContext && module._audioContext.state !== "closed") {
-            module._audioContext.close();
-          }
-        } catch (_err) {
-          // Ignore close failures when the context is already unavailable.
         }
       },
     };
