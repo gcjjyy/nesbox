@@ -23,44 +23,30 @@ function createBrowserAudioContext(): AudioContext {
 
 export class AudioSession {
   private context: AudioContext | undefined;
+  private preparation: Promise<AudioContext> | undefined;
   private explicitlyUnlocked = false;
-  private unlocking = false;
+  private preparing = false;
+  private resumePending = false;
+  private unlockPromise: Promise<boolean> | undefined;
   private snapshot: AudioSessionState = "locked";
   private readonly listeners = new Set<() => void>();
 
   constructor(private readonly createContext: () => AudioContext = createBrowserAudioContext) {}
 
-  getContext(): AudioContext {
-    if (this.context) return this.context;
-
-    try {
-      this.context = this.createContext();
-    } catch (error) {
-      this.setSnapshot("unavailable");
-      throw error;
-    }
-
-    this.context.addEventListener("statechange", this.handleStateChange);
-    this.enforceExplicitUnlock();
-    return this.context;
+  getContext(): Promise<AudioContext> {
+    if (!this.preparation) this.preparation = this.prepareContext();
+    return this.preparation;
   }
 
   async unlock(): Promise<boolean> {
-    const context = this.getContext();
-    this.unlocking = true;
+    if (this.unlockPromise) return this.unlockPromise;
 
+    const unlockPromise = this.performUnlock();
+    this.unlockPromise = unlockPromise;
     try {
-      await context.resume();
-      if (context.state !== "running") return false;
-
-      this.explicitlyUnlocked = true;
-      this.setSnapshot("running");
-      return true;
-    } catch {
-      this.setSnapshot(this.stateFromContext());
-      return false;
+      return await unlockPromise;
     } finally {
-      this.unlocking = false;
+      if (this.unlockPromise === unlockPromise) this.unlockPromise = undefined;
     }
   }
 
@@ -71,21 +57,101 @@ export class AudioSession {
     return () => this.listeners.delete(listener);
   };
 
-  private handleStateChange = (): void => {
-    this.enforceExplicitUnlock();
-    this.setSnapshot(this.stateFromContext());
-  };
+  private ensureContext(): AudioContext {
+    if (this.context) return this.context;
 
-  private enforceExplicitUnlock(): void {
-    if (!this.context || this.explicitlyUnlocked || this.unlocking || this.context.state !== "running") {
+    try {
+      this.context = this.createContext();
+    } catch (error) {
+      this.setSnapshot("unavailable");
+      throw error;
+    }
+
+    this.context.addEventListener("statechange", this.handleStateChange);
+    return this.context;
+  }
+
+  private async prepareContext(): Promise<AudioContext> {
+    const context = this.ensureContext();
+    this.preparing = true;
+
+    try {
+      if (!this.explicitlyUnlocked && context.state === "running") {
+        this.setSnapshot("unavailable");
+        await context.suspend();
+        if (context.state === "running") {
+          throw new Error("Audio context remained running after suspension");
+        }
+      }
+
+      this.setSnapshot(this.stateFromContext());
+      return context;
+    } catch (error) {
+      this.setSnapshot(this.stateFromContext());
+      throw error;
+    } finally {
+      this.preparing = false;
+    }
+  }
+
+  private async performUnlock(): Promise<boolean> {
+    let context: AudioContext;
+    try {
+      context = await this.getContext();
+    } catch {
+      if (!this.context) return false;
+      context = this.context;
+    }
+
+    this.resumePending = true;
+    try {
+      await context.resume();
+      if (context.state !== "running") {
+        this.setSnapshot(this.stateFromContext());
+        return false;
+      }
+
+      this.explicitlyUnlocked = true;
+      this.preparation = Promise.resolve(context);
+      this.setSnapshot("running");
+      return true;
+    } catch {
+      this.setSnapshot(this.stateFromContext());
+      return false;
+    } finally {
+      this.resumePending = false;
+    }
+  }
+
+  private handleStateChange = (): void => {
+    if (
+      this.context &&
+      !this.explicitlyUnlocked &&
+      !this.resumePending &&
+      this.context.state === "running"
+    ) {
+      this.setSnapshot("unavailable");
+      if (!this.preparing) {
+        this.preparation = undefined;
+        void this.getContext().catch(() => undefined);
+      }
       return;
     }
 
-    void this.context.suspend();
-  }
+    if (
+      this.context &&
+      !this.explicitlyUnlocked &&
+      !this.preparing &&
+      this.context.state !== "running"
+    ) {
+      this.preparation = undefined;
+    }
+    this.setSnapshot(this.stateFromContext());
+  };
 
   private stateFromContext(): AudioSessionState {
-    if (!this.context || !this.explicitlyUnlocked) return "locked";
+    if (!this.context) return this.snapshot === "unavailable" ? "unavailable" : "locked";
+    if (!this.explicitlyUnlocked) return this.context.state === "running" ? "unavailable" : "locked";
 
     switch (this.context.state as AudioSessionState) {
       case "running":

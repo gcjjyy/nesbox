@@ -65,6 +65,7 @@ async function loadFceuxWrapperWithFakeModule() {
 
   return {
     factory: window.createNesboxFceuxCore as FceuxFactory,
+    processorDisconnect: fakeFceuxModule.scriptProcessorNode.disconnect,
     receivedModuleOptions: () => moduleOptions,
   };
 }
@@ -76,7 +77,7 @@ describe("FCEUX core wrapper", () => {
       resume: vi.fn(async () => undefined),
       close: vi.fn(async () => undefined),
     };
-    const { factory, receivedModuleOptions } = await loadFceuxWrapperWithFakeModule();
+    const { factory, processorDisconnect, receivedModuleOptions } = await loadFceuxWrapperWithFakeModule();
     const core = await factory({
       canvas: fakeCanvas(),
       wasmUrl: "/cores/vendor/fceux.wasm",
@@ -87,6 +88,7 @@ describe("FCEUX core wrapper", () => {
     core.start();
     expect(sharedContext.resume).not.toHaveBeenCalled();
     core.dispose();
+    expect(processorDisconnect).toHaveBeenCalledTimes(1);
     expect(sharedContext.close).not.toHaveBeenCalled();
   });
 });

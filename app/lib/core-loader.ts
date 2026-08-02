@@ -14,10 +14,11 @@ export async function createCore(emulatorId: EmulatorId, canvas: HTMLCanvasEleme
   if (!factory) {
     throw new Error(`${target.factoryName} is not registered by ${target.scriptUrl}`);
   }
+  const audioContext = await audioSession.getContext();
   return factory({
     canvas,
     wasmUrl: target.wasmUrl,
-    audioContext: audioSession.getContext(),
+    audioContext,
     onLog: (line) => console.debug(`[${emulatorId}] ${line}`),
   });
 }

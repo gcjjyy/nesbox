@@ -9,6 +9,7 @@ import type { SystemId } from "../lib/rom";
 import { loadLocalStateBytes, saveLocalStateBytes } from "../lib/state-storage";
 import type { UserSettings } from "../lib/storage";
 import { audioPromptRequired, audioSession } from "../lib/audio-session";
+import { audioUnlockStatus } from "../lib/audio-unlock-policy";
 import { useAudioSessionState } from "../lib/use-audio-session-state";
 import { TouchControls } from "./TouchControls";
 
@@ -351,7 +352,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   async function unlockAudio() {
     setAudioUnlocking(true);
     try {
-      if (await audioSession.unlock()) onStatus("오디오 준비 완료");
+      onStatus(audioUnlockStatus(await audioSession.unlock()));
     } catch (err) {
       onStatus(err instanceof Error ? err.message : String(err));
     } finally {
