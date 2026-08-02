@@ -3,7 +3,7 @@ import { Volume2 } from "lucide-react";
 import type { NesboxButton, NesboxCore, EmulatorPhase } from "../lib/core-contract";
 import { recoverAudioCore } from "../lib/audio-core-recovery";
 import { AudioContextPreparationError, createCore, drawCoreMissing, makeUnavailableCore } from "../lib/core-loader";
-import { restoreAndStartCurrentCore } from "../lib/core-load-finalizer";
+import { loadAssignedCore } from "../lib/core-load-finalizer";
 import { emulatorById } from "../lib/emulator-registry";
 import type { GameEntry } from "../lib/game-types";
 import { fetchRomBytes } from "../lib/library-client";
@@ -94,6 +94,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   const shellRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const coreRef = useRef<NesboxCore | null>(null);
+  const disposedCoresRef = useRef(new WeakSet<NesboxCore>());
   const gameRef = useRef<GameEntry | null>(null);
   const disposedRef = useRef(false);
   const loadSeqRef = useRef(0);
@@ -242,12 +243,19 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     coreRef.current = null;
     gameRef.current = null;
     setAudioUnlocking(false);
-    if (core) core.dispose();
+    if (core) disposeOwnedCore(core);
     if (!updateUi) return;
     setScreenSystem("nes");
     setScreenPixels(screenSizeForSystem("nes"));
     setPhase("idle");
     onRunningChange(false);
+  }
+
+  function disposeOwnedCore(core: NesboxCore) {
+    if (coreRef.current === core) coreRef.current = null;
+    if (disposedCoresRef.current.has(core)) return;
+    disposedCoresRef.current.add(core);
+    core.dispose();
   }
 
   function syncScreenPixelsFromCanvas(canvas: HTMLCanvasElement) {
@@ -298,7 +306,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     try {
       core = await createCore(game.emulatorId, canvas);
       if (isStaleLoad(seq)) {
-        core.dispose();
+        disposeOwnedCore(core);
         return "stale";
       }
       onStatus(`${core.metadata.name} 코어 준비 완료`);
@@ -319,26 +327,24 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     }
 
     coreRef.current = core;
-    core.setVolume(settings.volume);
-    const romBytes = await fetchRomBytes(game.id);
-    if (isStaleLoad(seq)) {
-      core.dispose();
-      return "stale";
-    }
-    await core.loadRom(romBytes, game.fileName);
-    if (isStaleLoad(seq)) {
-      core.dispose();
-      return "stale";
-    }
-    if (canvasRef.current) syncScreenPixelsFromCanvas(canvasRef.current);
-    const finalization = await restoreAndStartCurrentCore({
+    const disposeLoadCore = () => {
+      const wasCurrent = coreRef.current === core;
+      if (wasCurrent && gameRef.current?.id === game.id) gameRef.current = null;
+      disposeOwnedCore(core);
+    };
+    const finalization = await loadAssignedCore({
+      prepare: () => core.setVolume(settings.volume),
+      fetchRom: () => fetchRomBytes(game.id),
+      loadRom: (romBytes) => core.loadRom(romBytes, game.fileName),
       readSavedState: () => loadLocalStateBytes(game.id, game.emulatorId, 0),
       loadSavedState: (state) => core.loadState(state),
-      isCurrent: () => !isStaleLoad(seq),
-      dispose: () => core.dispose(),
+      isCurrent: () => !isStaleLoad(seq) && coreRef.current === core,
+      dispose: disposeLoadCore,
       start: () => core.start(),
+      onRomLoaded: () => {
+        if (canvasRef.current) syncScreenPixelsFromCanvas(canvasRef.current);
+      },
       onRestored: () => onStatus("이 브라우저에 저장된 상태를 복원했습니다."),
-      onRestoreError: (error) => onStatus(error instanceof Error ? error.message : "상태 복원 실패"),
       onStarted: () => {
         setPhase("running");
         onRunningChange(true);
@@ -350,8 +356,15 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
           onStatus("WASM 코어 파일이 없어 런타임 인터페이스만 준비되었습니다.");
         }
       },
+      onFailure: (error) => {
+        audioRecoveryRef.current = null;
+        setPhase("error");
+        onRunningChange(false);
+        onStatus(statusFromError(error));
+      },
     });
-    if (finalization === "stale") return "stale";
+    if (finalization.kind === "stale") return "stale";
+    if (finalization.kind === "failed") return false;
     return realCore;
   }
 

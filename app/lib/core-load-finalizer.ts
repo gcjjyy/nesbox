@@ -1,47 +1,62 @@
-export interface CoreLoadFinalizerOptions {
+export interface AssignedCoreLoadOptions {
+  prepare: () => void;
+  fetchRom: () => Promise<Uint8Array>;
+  loadRom: (rom: Uint8Array) => Promise<void>;
   readSavedState: () => Promise<Uint8Array | null>;
   loadSavedState: (state: Uint8Array) => Promise<void>;
   isCurrent: () => boolean;
   dispose: () => void;
   start: () => void;
+  onRomLoaded: () => void;
   onRestored: () => void;
-  onRestoreError: (error: unknown) => void;
   onStarted: () => void;
+  onFailure: (error: unknown) => void;
 }
 
-export async function restoreAndStartCurrentCore(
-  options: CoreLoadFinalizerOptions,
-): Promise<"started" | "stale"> {
-  let state: Uint8Array | null = null;
-  try {
-    state = await options.readSavedState();
-  } catch (error) {
-    if (!options.isCurrent()) return disposeStale(options);
-    options.onRestoreError(error);
-  }
+export type AssignedCoreLoadResult =
+  | { kind: "started" }
+  | { kind: "stale" }
+  | { kind: "failed"; error: unknown };
 
-  if (!options.isCurrent()) return disposeStale(options);
-  if (state) {
-    let restored = false;
-    try {
+export async function loadAssignedCore(options: AssignedCoreLoadOptions): Promise<AssignedCoreLoadResult> {
+  try {
+    options.prepare();
+    const rom = await options.fetchRom();
+    if (!options.isCurrent()) return disposeStale(options);
+
+    await options.loadRom(rom);
+    if (!options.isCurrent()) return disposeStale(options);
+    options.onRomLoaded();
+
+    const state = await options.readSavedState();
+    if (!options.isCurrent()) return disposeStale(options);
+    if (state) {
       await options.loadSavedState(state);
-      restored = true;
-    } catch (error) {
       if (!options.isCurrent()) return disposeStale(options);
-      options.onRestoreError(error);
+      options.onRestored();
     }
 
     if (!options.isCurrent()) return disposeStale(options);
-    if (restored) options.onRestored();
+    options.start();
+    options.onStarted();
+    return { kind: "started" };
+  } catch (error) {
+    if (!options.isCurrent()) return disposeStale(options);
+    attemptDispose(options);
+    options.onFailure(error);
+    return { kind: "failed", error };
   }
-
-  if (!options.isCurrent()) return disposeStale(options);
-  options.start();
-  options.onStarted();
-  return "started";
 }
 
-function disposeStale(options: CoreLoadFinalizerOptions): "stale" {
-  options.dispose();
-  return "stale";
+function disposeStale(options: Pick<AssignedCoreLoadOptions, "dispose">): AssignedCoreLoadResult {
+  attemptDispose(options);
+  return { kind: "stale" };
+}
+
+function attemptDispose(options: Pick<AssignedCoreLoadOptions, "dispose">) {
+  try {
+    options.dispose();
+  } catch {
+    // Loading failures must still reach the current/stale state policy if a partial core resists cleanup.
+  }
 }

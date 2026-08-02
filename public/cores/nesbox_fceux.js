@@ -52,6 +52,118 @@
     return out;
   }
 
+  function sameDescriptor(left, right) {
+    if (!left || !right) return left === right;
+    if (left.configurable !== right.configurable || left.enumerable !== right.enumerable) return false;
+    if ("value" in left || "value" in right) {
+      return "value" in left && "value" in right && left.value === right.value && left.writable === right.writable;
+    }
+    return left.get === right.get && left.set === right.set;
+  }
+
+  function replacePropertyTemporarily(target, property, value) {
+    if ((typeof target !== "object" && typeof target !== "function") || target === null) {
+      throw new Error(`${property} owner is not an object`);
+    }
+    const original = Object.getOwnPropertyDescriptor(target, property);
+    if (original && !original.configurable && (!("value" in original) || !original.writable)) {
+      throw new Error(`${property} cannot be temporarily overridden`);
+    }
+
+    const replacement = original && !original.configurable
+      ? { ...original, value }
+      : {
+          configurable: true,
+          enumerable: original ? original.enumerable : false,
+          value,
+          writable: true,
+        };
+    Object.defineProperty(target, property, replacement);
+    const installed = Object.getOwnPropertyDescriptor(target, property);
+    if (!(installed && "value" in installed && installed.value === value)) {
+      if (original) Object.defineProperty(target, property, original);
+      else delete target[property];
+      throw new Error(`${property} override could not be verified`);
+    }
+
+    let restored = false;
+    return function restoreProperty() {
+      if (restored) return;
+      if (original) Object.defineProperty(target, property, original);
+      else if (!delete target[property]) throw new Error(`${property} override could not be removed`);
+      restored = true;
+      if (!sameDescriptor(Object.getOwnPropertyDescriptor(target, property), original)) {
+        throw new Error(`${property} descriptor could not be restored`);
+      }
+    };
+  }
+
+  function initWithSharedAudioContext(module, selector, sharedContext) {
+    if ((typeof sharedContext !== "object" && typeof sharedContext !== "function") || sharedContext === null) {
+      throw new Error("FCEUX requires a shared AudioContext");
+    }
+    if (typeof sharedContext.resume !== "function") {
+      throw new Error("Shared AudioContext resume is unavailable");
+    }
+
+    const restores = [];
+    let setupError = null;
+    try {
+      function SharedAudioContext() {
+        return sharedContext;
+      }
+      restores.push(replacePropertyTemporarily(globalThis, "AudioContext", SharedAudioContext));
+      restores.push(replacePropertyTemporarily(globalThis, "webkitAudioContext", SharedAudioContext));
+      restores.push(replacePropertyTemporarily(sharedContext, "resume", () => Promise.resolve()));
+    } catch (error) {
+      setupError = error;
+    }
+
+    if (setupError) {
+      let restoreError = null;
+      for (let index = restores.length - 1; index >= 0; index -= 1) {
+        try {
+          restores[index]();
+        } catch (error) {
+          restoreError = restoreError || error;
+        }
+      }
+      if (restoreError) throw new AggregateError([setupError, restoreError], "FCEUX audio init guard setup failed");
+      throw setupError;
+    }
+
+    let initError = null;
+    let initResult = false;
+    let moduleContextError = null;
+    let restoreError = null;
+    try {
+      module._audioContext = sharedContext;
+      if (module._audioContext !== sharedContext) throw new Error("FCEUX rejected the shared AudioContext");
+      initResult = module.init(selector);
+    } catch (error) {
+      initError = error;
+    } finally {
+      try {
+        module._audioContext = sharedContext;
+        if (module._audioContext !== sharedContext) throw new Error("FCEUX replaced the shared AudioContext");
+      } catch (error) {
+        moduleContextError = error;
+      }
+      for (let index = restores.length - 1; index >= 0; index -= 1) {
+        try {
+          restores[index]();
+        } catch (error) {
+          restoreError = restoreError || error;
+        }
+      }
+    }
+
+    const failures = [initError, moduleContextError, restoreError].filter(Boolean);
+    if (failures.length === 1) throw failures[0];
+    if (failures.length > 1) throw new AggregateError(failures, "FCEUX audio init guard failed");
+    return initResult;
+  }
+
   window.createNesboxFceuxCore = async function createNesboxFceuxCore(options) {
     const FCEUX = await loadFceuxScript();
     const module = await FCEUX({
@@ -72,7 +184,7 @@
     if (!options.canvas.id) {
       options.canvas.id = "nesbox-fceux-canvas-" + Math.random().toString(36).slice(2);
     }
-    if (!module.init("#" + CSS.escape(options.canvas.id))) {
+    if (!initWithSharedAudioContext(module, "#" + CSS.escape(options.canvas.id), options.audioContext)) {
       throw new Error("FCEUX init failed");
     }
     module.setMuted(false);
