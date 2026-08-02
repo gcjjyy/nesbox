@@ -166,6 +166,40 @@ describe("loadAssignedCore", () => {
     expect(load.statuses).toEqual([]);
   });
 
+  it("handles an asynchronous current start rejection through the failure policy", async () => {
+    const start = deferred<void>();
+    const startCore = vi.fn(() => start.promise);
+    const load = makeLoad({ start: startCore });
+    await vi.waitFor(() => expect(startCore).toHaveBeenCalledTimes(1));
+    const error = new Error("async start failed");
+
+    start.reject(error);
+
+    await expect(load.loading).resolves.toEqual({ kind: "failed", error });
+    expect(load.core.dispose).toHaveBeenCalledTimes(1);
+    expect(load.hasAssignedCore()).toBe(false);
+    expect(load.phase()).toBe("error");
+    expect(load.running()).toBe(false);
+    expect(load.statuses).toEqual(["rom-loaded", "restored", error.message]);
+  });
+
+  it("silently retires a core invalidated while asynchronous start succeeds", async () => {
+    const start = deferred<void>();
+    const startCore = vi.fn(() => start.promise);
+    const load = makeLoad({ start: startCore });
+    await vi.waitFor(() => expect(startCore).toHaveBeenCalledTimes(1));
+
+    load.invalidate();
+    start.resolve();
+
+    await expect(load.loading).resolves.toEqual({ kind: "stale" });
+    expect(load.core.dispose).toHaveBeenCalledTimes(1);
+    expect(load.core.start).not.toHaveBeenCalled();
+    expect(load.phase()).toBe("loading-core");
+    expect(load.running()).toBe(false);
+    expect(load.statuses).toEqual(["rom-loaded", "restored"]);
+  });
+
   it("starts only after the ROM and saved state finish for the current generation", async () => {
     const load = makeLoad();
 

@@ -112,6 +112,22 @@ function makeSharedContext() {
   return { realResume, sharedContext };
 }
 
+function makeSharedContextWithInheritedResume() {
+  const realResume = vi.fn(async () => undefined);
+  const prototype = {};
+  Object.defineProperty(prototype, "resume", {
+    configurable: true,
+    enumerable: false,
+    value: realResume,
+    writable: true,
+  });
+  const sharedContext = Object.assign(Object.create(prototype) as Record<string, unknown>, {
+    state: "suspended",
+    close: vi.fn(async () => undefined),
+  });
+  return { prototype, realResume, sharedContext };
+}
+
 function installUnexpectedAudioConstructors(context: Record<string, unknown>) {
   let constructionCount = 0;
   const unexpectedResume = vi.fn();
@@ -218,6 +234,30 @@ describe("FCEUX core wrapper", () => {
     expect(realResume).toHaveBeenCalledTimes(1);
   });
 
+  it("restores an inherited resume method after executing real vendor init", async () => {
+    const { context, factory, module } = await loadFceuxWrapperWithFakeModule();
+    const vendorInit = await compileRealVendorInit(context);
+    module.init.mockImplementation(() => vendorInit(module));
+    const constructors = installUnexpectedAudioConstructors(context);
+    const { prototype, realResume, sharedContext } = makeSharedContextWithInheritedResume();
+    const prototypeDescriptor = Object.getOwnPropertyDescriptor(prototype, "resume");
+
+    await factory({
+      canvas: fakeCanvas(),
+      wasmUrl: "/cores/vendor/fceux.wasm",
+      audioContext: sharedContext as unknown as AudioContext,
+    });
+
+    expect(module._audioContext).toBe(sharedContext);
+    expect(constructors.constructionCount()).toBe(0);
+    expect(realResume).not.toHaveBeenCalled();
+    expect(Object.getOwnPropertyDescriptor(sharedContext, "resume")).toBeUndefined();
+    expect(Object.getOwnPropertyDescriptor(prototype, "resume")).toEqual(prototypeDescriptor);
+
+    await (sharedContext.resume as () => Promise<void>)();
+    expect(realResume).toHaveBeenCalledTimes(1);
+  });
+
   it("fails before init when a global audio constructor cannot be safely overridden", async () => {
     const { context, factory, module } = await loadFceuxWrapperWithFakeModule();
     let constructionCount = 0;
@@ -244,6 +284,46 @@ describe("FCEUX core wrapper", () => {
     expect(constructionCount).toBe(0);
     expect(realResume).not.toHaveBeenCalled();
     expect(Object.getOwnPropertyDescriptor(context, "AudioContext")).toEqual(descriptor);
+    expect(Object.getOwnPropertyDescriptor(sharedContext, "resume")).toEqual(resumeDescriptor);
+  });
+
+  it("rolls back the first constructor when the second constructor is locked", async () => {
+    const { context, factory, module } = await loadFceuxWrapperWithFakeModule();
+    let constructionCount = 0;
+    function OriginalAudioContext() {
+      constructionCount += 1;
+    }
+    function LockedWebkitAudioContext() {
+      constructionCount += 1;
+    }
+    Object.defineProperty(context, "AudioContext", {
+      configurable: true,
+      enumerable: false,
+      value: OriginalAudioContext,
+      writable: false,
+    });
+    Object.defineProperty(context, "webkitAudioContext", {
+      configurable: false,
+      enumerable: true,
+      value: LockedWebkitAudioContext,
+      writable: false,
+    });
+    const audioContextDescriptor = Object.getOwnPropertyDescriptor(context, "AudioContext");
+    const webkitDescriptor = Object.getOwnPropertyDescriptor(context, "webkitAudioContext");
+    const { realResume, sharedContext } = makeSharedContext();
+    const resumeDescriptor = Object.getOwnPropertyDescriptor(sharedContext, "resume");
+
+    await expect(factory({
+      canvas: fakeCanvas(),
+      wasmUrl: "/cores/vendor/fceux.wasm",
+      audioContext: sharedContext as unknown as AudioContext,
+    })).rejects.toThrow(/webkitAudioContext/);
+
+    expect(module.init).not.toHaveBeenCalled();
+    expect(constructionCount).toBe(0);
+    expect(realResume).not.toHaveBeenCalled();
+    expect(Object.getOwnPropertyDescriptor(context, "AudioContext")).toEqual(audioContextDescriptor);
+    expect(Object.getOwnPropertyDescriptor(context, "webkitAudioContext")).toEqual(webkitDescriptor);
     expect(Object.getOwnPropertyDescriptor(sharedContext, "resume")).toEqual(resumeDescriptor);
   });
 });

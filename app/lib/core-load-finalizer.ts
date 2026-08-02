@@ -6,7 +6,7 @@ export interface AssignedCoreLoadOptions {
   loadSavedState: (state: Uint8Array) => Promise<void>;
   isCurrent: () => boolean;
   dispose: () => void;
-  start: () => void;
+  start: () => Promise<void> | void;
   onRomLoaded: () => void;
   onRestored: () => void;
   onStarted: () => void;
@@ -37,7 +37,8 @@ export async function loadAssignedCore(options: AssignedCoreLoadOptions): Promis
     }
 
     if (!options.isCurrent()) return disposeStale(options);
-    options.start();
+    await options.start();
+    if (!options.isCurrent()) return disposeStale(options);
     options.onStarted();
     return { kind: "started" };
   } catch (error) {
