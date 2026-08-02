@@ -22,6 +22,11 @@ function makeSession() {
 }
 
 describe("AudioSession", () => {
+  it("does not prompt before an engine is ready", () => {
+    expect(audioPromptRequired(false, "locked")).toBe(false);
+    expect(audioPromptRequired(false, "suspended")).toBe(false);
+  });
+
   it("stays locked when code only acquires the context", () => {
     const { context, session } = makeSession();
     expect(session.getContext()).toBe(context);

@@ -49,7 +49,6 @@ export interface NesboxCore {
   stop: () => void;
   setButton: (player: number, button: NesboxButton, pressed: boolean) => void;
   setVolume: (volume: number) => void;
-  resumeAudio?: () => Promise<void> | void;
   saveState: () => Promise<Uint8Array>;
   loadState: (state: Uint8Array) => Promise<void>;
   dispose: () => void;

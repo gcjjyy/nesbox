@@ -92,16 +92,6 @@
       return new Promise((resolve) => requestAnimationFrame(() => resolve()));
     }
 
-    async function resumeAudio() {
-      try {
-        if (module._audioContext && module._audioContext.state !== "closed") {
-          await module._audioContext.resume();
-        }
-      } catch (_err) {
-        // Browsers can reject resume() outside a user gesture.
-      }
-    }
-
     function primeVideoFrame(count = 2) {
       const wasPaused = !running;
       module.setPaused(false);
@@ -167,7 +157,6 @@
       setVolume(volume) {
         module.setMuted(volume <= 0);
       },
-      resumeAudio,
       async saveState() {
         module.setState(0);
         module.saveState();

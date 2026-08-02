@@ -8,6 +8,8 @@ import { fetchRomBytes } from "../lib/library-client";
 import type { SystemId } from "../lib/rom";
 import { loadLocalStateBytes, saveLocalStateBytes } from "../lib/state-storage";
 import type { UserSettings } from "../lib/storage";
+import { audioPromptRequired, audioSession } from "../lib/audio-session";
+import { useAudioSessionState } from "../lib/use-audio-session-state";
 import { TouchControls } from "./TouchControls";
 
 export interface EmulatorStageHandle {
@@ -67,16 +69,6 @@ function screenSizeForSystem(system: SystemId) {
   return system === "snes" ? SCREEN_SIZES.snes : SCREEN_SIZES.nes;
 }
 
-function isDesktopChrome() {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
-  return (
-    /\bChrome\//.test(ua) &&
-    !/\b(Edg|OPR|Opera|SamsungBrowser|CriOS)\//.test(ua) &&
-    !/\b(Mobile|Android|iPhone|iPad|iPod)\b/.test(ua)
-  );
-}
-
 function hasTouchSurface() {
   if (typeof window === "undefined" || typeof navigator === "undefined") return false;
   if (navigator.maxTouchPoints > 0) return true;
@@ -91,13 +83,13 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   const disposedRef = useRef(false);
   const loadSeqRef = useRef(0);
   const gamepadButtonsRef = useRef(new Set<NesboxButton>());
-  const audioPromptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [phase, setPhase] = useState<EmulatorPhase>("idle");
-  const [audioPromptVisible, setAudioPromptVisible] = useState(false);
   const [audioUnlocking, setAudioUnlocking] = useState(false);
   const [screenSystem, setScreenSystem] = useState<SystemId>("nes");
   const [screenPixels, setScreenPixels] = useState(screenSizeForSystem("nes"));
   const [touchSurface, setTouchSurface] = useState(false);
+  const audioState = useAudioSessionState();
+  const audioPromptVisible = audioPromptRequired(phase === "running", audioState);
 
   useImperativeHandle(ref, () => ({
     openGame,
@@ -121,7 +113,6 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
       const button = KEYBOARD_MAP.get(event.code);
       if (!button || !coreRef.current) return;
       event.preventDefault();
-      if (pressed) coreRef.current.resumeAudio?.();
       coreRef.current.setButton(0, button, pressed);
     };
     const down = (event: KeyboardEvent) => onKey(event, true);
@@ -224,7 +215,6 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   function shutdownCore(updateUi = true) {
     disposedRef.current = true;
     loadSeqRef.current += 1;
-    clearAudioPromptTimer();
     disposeCore(updateUi);
   }
 
@@ -232,7 +222,6 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     const core = coreRef.current;
     coreRef.current = null;
     gameRef.current = null;
-    setAudioPromptVisible(false);
     setAudioUnlocking(false);
     if (core) core.dispose();
     if (!updateUi) return;
@@ -246,21 +235,6 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     const next = readScreenPixelsFromCanvas(canvas);
     if (!next) return;
     setScreenPixels((prev) => (prev.width === next.width && prev.height === next.height ? prev : next));
-  }
-
-  function clearAudioPromptTimer() {
-    if (!audioPromptTimerRef.current) return;
-    clearTimeout(audioPromptTimerRef.current);
-    audioPromptTimerRef.current = null;
-  }
-
-  function scheduleAudioPrompt(seq: number) {
-    clearAudioPromptTimer();
-    audioPromptTimerRef.current = setTimeout(() => {
-      audioPromptTimerRef.current = null;
-      if (isStaleLoad(seq) || isDesktopChrome()) return;
-      setAudioPromptVisible(true);
-    }, 1200);
   }
 
   function isStaleLoad(seq: number) {
@@ -333,7 +307,6 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     setPhase("running");
     onRunningChange(true);
     onStatus("실행 중");
-    scheduleAudioPrompt(seq);
   }
 
   function toggleRun() {
@@ -375,23 +348,18 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     await node.requestFullscreen();
   }
 
-  async function unlockAudio(showStatus = true) {
-    const core = coreRef.current;
-    if (!core?.resumeAudio) return;
+  async function unlockAudio() {
     setAudioUnlocking(true);
     try {
-      await core.resumeAudio();
-      setAudioPromptVisible(false);
-      if (showStatus) onStatus("오디오 준비 완료");
+      if (await audioSession.unlock()) onStatus("오디오 준비 완료");
     } catch (err) {
-      if (showStatus) onStatus(err instanceof Error ? err.message : String(err));
+      onStatus(err instanceof Error ? err.message : String(err));
     } finally {
       setAudioUnlocking(false);
     }
   }
 
   function onTouchButton(button: NesboxButton, pressed: boolean) {
-    if (pressed) void unlockAudio(false);
     coreRef.current?.setButton(0, button, pressed);
   }
 
@@ -407,7 +375,6 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
       ref={shellRef}
       className={`emulator-stage emulator-stage--system-${screenSystem} ${settings.integerScale ? "emulator-stage--integer" : ""}`}
       style={screenStyle}
-      onPointerDown={() => void unlockAudio(false)}
     >
       <div className="screen-slot">
         <div className="screen-bezel">
@@ -425,7 +392,6 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
               <button
                 type="button"
                 className="audio-unlock__button"
-                onPointerDown={(event) => event.stopPropagation()}
                 onClick={() => void unlockAudio()}
                 disabled={audioUnlocking}
               >
