@@ -1,7 +1,8 @@
 import { useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type Ref } from "react";
 import { Volume2 } from "lucide-react";
 import type { NesboxButton, NesboxCore, EmulatorPhase } from "../lib/core-contract";
-import { createCore, drawCoreMissing, makeUnavailableCore } from "../lib/core-loader";
+import { recoverAudioCore } from "../lib/audio-core-recovery";
+import { AudioContextPreparationError, createCore, drawCoreMissing, makeUnavailableCore } from "../lib/core-loader";
 import { emulatorById } from "../lib/emulator-registry";
 import type { GameEntry } from "../lib/game-types";
 import { fetchRomBytes } from "../lib/library-client";
@@ -9,7 +10,7 @@ import type { SystemId } from "../lib/rom";
 import { loadLocalStateBytes, saveLocalStateBytes } from "../lib/state-storage";
 import type { UserSettings } from "../lib/storage";
 import { audioPromptRequired, audioSession } from "../lib/audio-session";
-import { audioUnlockStatus } from "../lib/audio-unlock-policy";
+import { audioCoreRecoveryStatus, audioUnlockStatus } from "../lib/audio-unlock-policy";
 import { useAudioSessionState } from "../lib/use-audio-session-state";
 import { TouchControls } from "./TouchControls";
 
@@ -66,6 +67,13 @@ const SCREEN_SIZES: Record<"nes" | "snes", { width: number; height: number }> = 
   snes: { width: 256, height: 224 },
 };
 
+type GameLoadResult = boolean | "stale";
+
+interface PendingAudioRecovery {
+  game: GameEntry;
+  seq: number;
+}
+
 function screenSizeForSystem(system: SystemId) {
   return system === "snes" ? SCREEN_SIZES.snes : SCREEN_SIZES.nes;
 }
@@ -83,6 +91,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   const gameRef = useRef<GameEntry | null>(null);
   const disposedRef = useRef(false);
   const loadSeqRef = useRef(0);
+  const audioRecoveryRef = useRef<PendingAudioRecovery | null>(null);
   const gamepadButtonsRef = useRef(new Set<NesboxButton>());
   const [phase, setPhase] = useState<EmulatorPhase>("idle");
   const [audioUnlocking, setAudioUnlocking] = useState(false);
@@ -216,6 +225,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   function shutdownCore(updateUi = true) {
     disposedRef.current = true;
     loadSeqRef.current += 1;
+    audioRecoveryRef.current = null;
     disposeCore(updateUi);
   }
 
@@ -242,10 +252,15 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     return disposedRef.current || seq !== loadSeqRef.current;
   }
 
-  async function openGame(game: GameEntry) {
+  async function openGame(game: GameEntry): Promise<void> {
+    await loadGame(game);
+  }
+
+  async function loadGame(game: GameEntry): Promise<GameLoadResult> {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return "stale";
     disposedRef.current = false;
+    audioRecoveryRef.current = null;
     const seq = loadSeqRef.current + 1;
     loadSeqRef.current = seq;
     setPhase("loading-core");
@@ -259,23 +274,27 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     if (!profile) {
       setPhase("error");
       onStatus(`알 수 없는 에뮬레이터입니다: ${game.emulatorId}`);
-      return;
+      return false;
     }
 
     let core: NesboxCore;
+    let realCore = true;
+    let audioPreparationFailed = false;
     try {
       core = await createCore(game.emulatorId, canvas);
       if (isStaleLoad(seq)) {
         core.dispose();
-        return;
+        return "stale";
       }
       onStatus(`${core.metadata.name} 코어 준비 완료`);
     } catch (err) {
-      if (isStaleLoad(seq)) return;
+      if (isStaleLoad(seq)) return "stale";
       console.warn("[nesbox] core unavailable:", err);
+      realCore = false;
+      audioPreparationFailed = err instanceof AudioContextPreparationError;
+      if (audioPreparationFailed) audioRecoveryRef.current = { game, seq };
       core = makeUnavailableCore(game.emulatorId, canvas);
       drawCoreMissing(canvas, profile, game.fileName);
-      onStatus("WASM 코어 파일이 없어 런타임 인터페이스만 준비되었습니다.");
     }
 
     coreRef.current = core;
@@ -283,19 +302,19 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     const romBytes = await fetchRomBytes(game.id);
     if (isStaleLoad(seq)) {
       core.dispose();
-      return;
+      return "stale";
     }
     await core.loadRom(romBytes, game.fileName);
     if (isStaleLoad(seq)) {
       core.dispose();
-      return;
+      return "stale";
     }
     if (canvasRef.current) syncScreenPixelsFromCanvas(canvasRef.current);
     try {
       const state = await loadLocalStateBytes(game.id, game.emulatorId, 0);
       if (isStaleLoad(seq)) {
         core.dispose();
-        return;
+        return "stale";
       }
       if (state) {
         await core.loadState(state);
@@ -307,7 +326,14 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     core.start();
     setPhase("running");
     onRunningChange(true);
-    onStatus("실행 중");
+    if (audioPreparationFailed) {
+      onStatus("오디오 버튼을 눌러 게임을 다시 불러오세요.");
+    } else if (realCore) {
+      onStatus("실행 중");
+    } else {
+      onStatus("WASM 코어 파일이 없어 런타임 인터페이스만 준비되었습니다.");
+    }
+    return realCore;
   }
 
   function toggleRun() {
@@ -352,9 +378,39 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   async function unlockAudio() {
     setAudioUnlocking(true);
     try {
-      onStatus(audioUnlockStatus(await audioSession.unlock()));
+      const pendingRecovery = audioRecoveryRef.current;
+      if (!pendingRecovery) {
+        onStatus(audioUnlockStatus(await audioSession.unlock()));
+        return;
+      }
+
+      const result = await recoverAudioCore({
+        unlock: () => audioSession.unlock(),
+        isCurrent: () => (
+          audioRecoveryRef.current === pendingRecovery &&
+          !disposedRef.current &&
+          loadSeqRef.current === pendingRecovery.seq &&
+          gameRef.current?.id === pendingRecovery.game.id
+        ),
+        reload: () => loadGame(pendingRecovery.game),
+      });
+
+      switch (result.kind) {
+        case "unlock-failed":
+          onStatus(result.error ? statusFromError(result.error) : audioUnlockStatus(false));
+          break;
+        case "recovered":
+          onStatus(audioCoreRecoveryStatus(true));
+          break;
+        case "retry-failed":
+          if (audioRecoveryRef.current) onStatus(audioUnlockStatus(false));
+          else onStatus(result.error ? statusFromError(result.error) : audioCoreRecoveryStatus(false));
+          break;
+        case "stale":
+          break;
+      }
     } catch (err) {
-      onStatus(err instanceof Error ? err.message : String(err));
+      onStatus(statusFromError(err));
     } finally {
       setAudioUnlocking(false);
     }
@@ -415,6 +471,10 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
       />
     </section>
   );
+}
+
+function statusFromError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function readScreenPixelsFromCanvas(canvas: HTMLCanvasElement) {

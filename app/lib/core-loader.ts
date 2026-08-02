@@ -5,6 +5,13 @@ import type { EmulatorId } from "./rom";
 
 export const CORE_TARGETS = EMULATOR_PROFILES;
 
+export class AudioContextPreparationError extends Error {
+  constructor(cause: unknown) {
+    super("Audio context preparation failed", { cause });
+    this.name = "AudioContextPreparationError";
+  }
+}
+
 const loadedScripts = new Map<string, Promise<void>>();
 
 export async function createCore(emulatorId: EmulatorId, canvas: HTMLCanvasElement): Promise<NesboxCore> {
@@ -14,7 +21,12 @@ export async function createCore(emulatorId: EmulatorId, canvas: HTMLCanvasEleme
   if (!factory) {
     throw new Error(`${target.factoryName} is not registered by ${target.scriptUrl}`);
   }
-  const audioContext = await audioSession.getContext();
+  let audioContext: AudioContext;
+  try {
+    audioContext = await audioSession.getContext();
+  } catch (error) {
+    throw new AudioContextPreparationError(error);
+  }
   return factory({
     canvas,
     wasmUrl: target.wasmUrl,
