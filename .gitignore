@@ -1,6 +1,7 @@
 node_modules/
 build/
 .react-router/
+.worktrees/
 
 .env
 data/
