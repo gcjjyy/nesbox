@@ -26,7 +26,9 @@ Add a browser-only audio-session module whose singleton lifetime matches the
 loaded JavaScript document. It owns one shared `AudioContext`, exposes its
 observable state, and provides an explicit `unlock()` operation. Creating or
 retrieving the context does not resume it. Only `unlock()`, called by the prompt
-button, may transition a never-unlocked session to running.
+button, may transition a never-unlocked session to running. If a browser creates
+the context in `running` state without that explicit unlock, the session
+immediately suspends it before treating the session as available to consumers.
 
 The FCEUX factory will receive the shared context through its runtime options.
 The generated runtime already skips context construction when `_audioContext`
