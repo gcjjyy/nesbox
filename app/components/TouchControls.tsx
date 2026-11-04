@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play, RotateCcw, Save } from "lucide-react";
 import type { NesboxButton } from "../lib/core-contract";
+import { stickButtons } from "../lib/touch-stick";
 
 interface TouchControlsProps {
   enabled: boolean;
@@ -19,7 +20,6 @@ const face: Array<[NesboxButton, string]> = [
 ];
 
 const ICON = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
-const STICK_DEADZONE = 0.28;
 const STICK_THROW = 42;
 
 type TouchPoint = Pick<Touch, "identifier" | "clientX" | "clientY">;
@@ -28,11 +28,14 @@ type ButtonSet = Set<NesboxButton>;
 interface TouchHit {
   buttons: ButtonSet;
   track: boolean;
+  stick: boolean;
 }
 
 export function TouchControls({ enabled, running, onButton, onRunToggle, onReset, onSave }: TouchControlsProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const activePointersRef = useRef(new Map<number, ButtonSet>());
+  // 스틱에서 시작한 터치는 손을 뗄 때까지 스틱에 묶어 둔다.
+  const stickPointersRef = useRef(new Set<number>());
   const pressedCountsRef = useRef(new Map<NesboxButton, number>());
   const onButtonRef = useRef(onButton);
   const [pressedButtons, setPressedButtons] = useState<Set<NesboxButton>>(() => new Set());
@@ -45,6 +48,7 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
     return () => {
       for (const button of pressedCountsRef.current.keys()) onButtonRef.current(button, false);
       activePointersRef.current.clear();
+      stickPointersRef.current.clear();
       pressedCountsRef.current.clear();
     };
   }, []);
@@ -73,39 +77,28 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
     pressedCountsRef.current.set(button, count - 1);
   }
 
-  function buttonsAt(x: number, y: number): TouchHit {
+  function buttonsAt(x: number, y: number, ownedByStick = false): TouchHit {
     const root = rootRef.current;
-    if (!root) return { buttons: new Set(), track: false };
+    if (!root) return { buttons: new Set(), track: false, stick: false };
 
     const stickNode = root.querySelector<HTMLElement>("[data-touch-stick]");
     if (stickNode) {
       const stickRect = stickNode.getBoundingClientRect();
-      if (x >= stickRect.left && x <= stickRect.right && y >= stickRect.top && y <= stickRect.bottom) {
-        const radius = Math.min(stickRect.width, stickRect.height) / 2;
-        const dx = (x - (stickRect.left + stickRect.width / 2)) / radius;
-        const dy = (y - (stickRect.top + stickRect.height / 2)) / radius;
-        const distance = Math.hypot(dx, dy);
-        const buttons = new Set<NesboxButton>();
-        if (distance > STICK_DEADZONE) {
-          if (dx < -STICK_DEADZONE) buttons.add("left");
-          if (dx > STICK_DEADZONE) buttons.add("right");
-          if (dy < -STICK_DEADZONE) buttons.add("up");
-          if (dy > STICK_DEADZONE) buttons.add("down");
-        }
-        return { buttons, track: true };
-      }
+      const inside = x >= stickRect.left && x <= stickRect.right && y >= stickRect.top && y <= stickRect.bottom;
+      if (ownedByStick || inside) return { buttons: stickButtons(x, y, stickRect), track: true, stick: true };
     }
+    if (ownedByStick) return { buttons: new Set(), track: true, stick: true };
 
     for (const target of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-touch-button]"))) {
       const rect = target.getBoundingClientRect();
       const hitSlop = target.closest(".touch-controls__cluster--face") ? 8 : 0;
       if (x >= rect.left - hitSlop && x <= rect.right + hitSlop && y >= rect.top - hitSlop && y <= rect.bottom + hitSlop) {
         const button = target.dataset.touchButton as NesboxButton | undefined;
-        return { buttons: button ? new Set([button]) : new Set(), track: Boolean(button) };
+        return { buttons: button ? new Set([button]) : new Set(), track: Boolean(button), stick: false };
       }
     }
 
-    return { buttons: new Set(), track: false };
+    return { buttons: new Set(), track: false, stick: false };
   }
 
   function setPointerButtons(pointerId: number, next: ButtonSet) {
@@ -122,14 +115,24 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
     activePointersRef.current.set(pointerId, next);
   }
 
+  function startPointer(pointerId: number, hit: TouchHit) {
+    if (hit.stick) stickPointersRef.current.add(pointerId);
+    setPointerButtons(pointerId, hit.buttons);
+  }
+
+  function movePointer(pointerId: number, x: number, y: number) {
+    setPointerButtons(pointerId, buttonsAt(x, y, stickPointersRef.current.has(pointerId)).buttons);
+  }
+
   function releasePointer(pointerId: number) {
     const prev = activePointersRef.current.get(pointerId) ?? new Set<NesboxButton>();
     for (const button of prev) release(button);
     activePointersRef.current.delete(pointerId);
+    stickPointersRef.current.delete(pointerId);
   }
 
   function setTouchButton(touch: TouchPoint) {
-    setPointerButtons(touch.identifier, buttonsAt(touch.clientX, touch.clientY).buttons);
+    movePointer(touch.identifier, touch.clientX, touch.clientY);
   }
 
   function releaseTouch(touch: TouchPoint) {
@@ -151,7 +154,7 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
         const next = buttonsAt(touch.clientX, touch.clientY);
         if (!next.track) continue;
         handled = true;
-        setPointerButtons(touch.identifier, next.buttons);
+        startPointer(touch.identifier, next);
       }
       if (handled) event.preventDefault();
     };
@@ -214,13 +217,13 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
         } catch (_err) {
           // Some browsers reject capture for synthetic events.
         }
-        setPointerButtons(event.pointerId, next.buttons);
+        startPointer(event.pointerId, next);
       }}
       onPointerMove={(event) => {
         if (event.pointerType === "touch") return;
         if (!activePointersRef.current.has(event.pointerId)) return;
         event.preventDefault();
-        setPointerButtons(event.pointerId, buttonsAt(event.clientX, event.clientY).buttons);
+        movePointer(event.pointerId, event.clientX, event.clientY);
       }}
       onPointerUp={(event) => {
         if (event.pointerType === "touch") return;

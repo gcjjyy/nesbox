@@ -63,8 +63,10 @@ const GAMEPAD_BUTTON_MAP = new Map<number, NesboxButton>([
 
 const GAMEPAD_AXIS_THRESHOLD = 0.45;
 
+// em-fceux는 위아래 오버스캔을 뺀 224줄을 8:7 픽셀 비율로 출력한다(292x224).
+// 화면 틀을 처음부터 이 비율로 잡아야 코어가 맞춘 캔버스와 틀이 어긋나지 않는다.
 const SCREEN_SIZES: Record<"nes" | "snes", { width: number; height: number }> = {
-  nes: { width: 256, height: 240 },
+  nes: { width: 292, height: 224 },
   snes: { width: 256, height: 224 },
 };
 

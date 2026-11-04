@@ -972,9 +972,9 @@ button {
 }
 
 .emulator-stage {
-  --screen-aspect: 256 / 240;
-  --screen-width: 256;
-  --screen-height: 240;
+  --screen-aspect: 292 / 224;
+  --screen-width: 292;
+  --screen-height: 224;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 14px;
@@ -988,9 +988,9 @@ button {
 }
 
 .emulator-stage--system-nes {
-  --screen-aspect: 256 / 240;
-  --screen-width: 256;
-  --screen-height: 240;
+  --screen-aspect: 292 / 224;
+  --screen-width: 292;
+  --screen-height: 224;
 }
 
 .emulator-stage--system-snes {
@@ -1001,6 +1001,9 @@ button {
 
 .screen-slot {
   display: grid;
+  /* 칸 크기가 캔버스 크기를 따라 늘어나지 않도록 고정한다 */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   place-items: center;
   min-width: 0;
   min-height: 0;
@@ -1014,6 +1017,7 @@ button {
   place-items: center;
   width: min(100%, calc(100cqh * var(--screen-width) / var(--screen-height)));
   aspect-ratio: var(--screen-aspect);
+  min-width: 0;
   min-height: 0;
   max-width: 100%;
   max-height: 100%;
@@ -1041,10 +1045,17 @@ button {
   background: #030404;
 }
 
+/*
+ * em-fceux는 매 프레임 부모(.screen-viewport) 높이를 읽어 캔버스에 px 크기를 지정한다.
+ * 캔버스가 레이아웃 크기에 기여하면 "캔버스가 커짐 → 틀이 커짐 → 코어가 더 키움" 순환이 생겨
+ * WebKit에서 화면 폭보다 넓게 고착되므로, 절대 위치로 띄워 틀 크기 계산에서 뺀다.
+ */
 .game-canvas {
+  position: absolute;
+  inset: 0;
+  margin: auto;
   width: 100%;
-  height: auto;
-  aspect-ratio: var(--screen-aspect);
+  height: 100%;
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
@@ -1629,7 +1640,7 @@ button {
 
   .workspace--player {
     grid-template-rows: minmax(0, 1fr);
-    padding: 5px 8px 4px;
+    padding: 0 0 4px;
   }
 
   .emulator-stage {
@@ -1637,15 +1648,14 @@ button {
     gap: 6px;
   }
 
+  /* 모바일에서는 틀 장식 없이 화면을 가로 폭에 꽉 채운다 */
   .screen-bezel {
     width: 100%;
     height: auto;
-    padding: 10px;
-    border-radius: 7px;
-    box-shadow:
-      inset 0 0 0 5px #151819,
-      inset 0 0 0 6px #2a3030,
-      0 18px 50px var(--shadow);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .audio-unlock {
@@ -1722,8 +1732,9 @@ button {
   .touch-controls {
     grid-template-columns: 150px 126px;
     justify-content: space-between;
-    gap: 4px 8px;
-    align-items: end;
+    /* 위 SELECT/START 줄과 방향키 사이를 띄우고, 방향키와 YXBA의 세로 중심을 맞춘다 */
+    gap: 20px 8px;
+    align-items: center;
     width: min(100%, 374px);
     min-width: 0;
     min-height: 166px;
