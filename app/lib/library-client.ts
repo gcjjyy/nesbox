@@ -28,20 +28,8 @@ export async function importOpenEmuGames(): Promise<{ imported: number; games: G
   return (await r.json()) as { imported: number; games: GameEntry[] };
 }
 
-export async function deleteGame(gameId: string): Promise<void> {
-  const r = await fetch(`/api/games/${encodeURIComponent(gameId)}`, {
-    method: "DELETE",
-    credentials: "same-origin",
-  });
-  if (!r.ok) throw new Error(await r.text());
-}
-
-export async function touchGame(gameId: string): Promise<void> {
-  const r = await fetch(`/api/games/${encodeURIComponent(gameId)}`, {
-    method: "PATCH",
-    credentials: "same-origin",
-  });
-  if (!r.ok) throw new Error(await r.text());
+export function coverUrl(gameId: string): string {
+  return `/api/games/${encodeURIComponent(gameId)}/cover`;
 }
 
 export async function fetchRomBytes(gameId: string): Promise<Uint8Array> {

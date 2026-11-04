@@ -6,8 +6,9 @@ import { defaultEmulatorForFile } from "./emulator-registry";
 import { extensionOf, type EmulatorId } from "./rom";
 import type { GameEntry, StoredGame } from "./game-types";
 
-const DATA_DIR = process.env.NESBOX_DATA_DIR ?? path.join(process.cwd(), "data");
+export const DATA_DIR = process.env.NESBOX_DATA_DIR ?? path.join(process.cwd(), "data");
 const ROM_DIR = path.join(DATA_DIR, "roms");
+export const COVER_DIR = path.join(DATA_DIR, "covers");
 const DB_PATH = process.env.NESBOX_DB_PATH ?? path.join(DATA_DIR, "nesbox.sqlite");
 const OPENEMU_ROMS_DIR =
   process.env.NESBOX_OPENEMU_ROMS_DIR ??
@@ -25,6 +26,9 @@ interface GameRow {
   rom_path: string;
   added_at: number;
   last_played_at: number | null;
+  original_title: string | null;
+  cover_path: string | null;
+  pinned: number;
 }
 
 export function getLibraryDb(): Database.Database {
@@ -56,12 +60,22 @@ export function getLibraryDb(): Database.Database {
       FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
     );
   `);
+  migrateGameColumns(db);
   return db;
+}
+
+function migrateGameColumns(database: Database.Database): void {
+  const columns = new Set(
+    (database.prepare("PRAGMA table_info(games)").all() as { name: string }[]).map((column) => column.name),
+  );
+  if (!columns.has("original_title")) database.exec("ALTER TABLE games ADD COLUMN original_title TEXT");
+  if (!columns.has("cover_path")) database.exec("ALTER TABLE games ADD COLUMN cover_path TEXT");
+  if (!columns.has("pinned")) database.exec("ALTER TABLE games ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0");
 }
 
 export function listGames(): GameEntry[] {
   const rows = getLibraryDb()
-    .prepare("SELECT * FROM games ORDER BY COALESCE(last_played_at, added_at) DESC, title COLLATE NOCASE ASC")
+    .prepare("SELECT * FROM games ORDER BY pinned DESC, title COLLATE NOCASE ASC")
     .all() as GameRow[];
   return rows.map(rowToGame);
 }
@@ -71,17 +85,14 @@ export function getGame(gameId: string): StoredGame | null {
   return row ? rowToStoredGame(row) : null;
 }
 
-export function touchGame(gameId: string): void {
-  getLibraryDb().prepare("UPDATE games SET last_played_at = ? WHERE id = ?").run(Date.now(), gameId);
+export function setGameCover(gameId: string, coverPath: string, originalTitle: string): void {
+  getLibraryDb()
+    .prepare("UPDATE games SET cover_path = ?, original_title = ? WHERE id = ?")
+    .run(coverPath, originalTitle, gameId);
 }
 
-export function deleteGame(gameId: string): void {
-  const database = getLibraryDb();
-  const tx = database.transaction(() => {
-    database.prepare("DELETE FROM save_states WHERE game_id = ?").run(gameId);
-    database.prepare("DELETE FROM games WHERE id = ?").run(gameId);
-  });
-  tx();
+export function setGamePinned(gameId: string, pinned: boolean): void {
+  getLibraryDb().prepare("UPDATE games SET pinned = ? WHERE id = ?").run(pinned ? 1 : 0, gameId);
 }
 
 export function saveState(gameId: string, emulatorId: EmulatorId, slot: number, bytes: Uint8Array): void {
@@ -111,7 +122,7 @@ export function importOpenEmuGames(): { imported: number; games: GameEntry[] } {
   return { imported, games: listGames() };
 }
 
-export function saveUploadedGame(fileName: string, bytes: Uint8Array): GameEntry {
+export function saveUploadedGame(fileName: string, bytes: Uint8Array): StoredGame {
   const profile = defaultEmulatorForFile(fileName);
   if (!profile) throw new Error(`unsupported ROM: ${fileName}`);
   const hash = sha1(bytes);
@@ -146,7 +157,9 @@ function upsertGameFromPath(romPath: string): boolean {
   return true;
 }
 
-function upsertGame(input: Omit<StoredGame, "addedAt" | "lastPlayedAt">): GameEntry {
+type GameInput = Omit<StoredGame, "addedAt" | "lastPlayedAt" | "originalTitle" | "hasCover" | "pinned" | "coverPath">;
+
+function upsertGame(input: GameInput): StoredGame {
   const now = Date.now();
   getLibraryDb()
     .prepare(`
@@ -205,6 +218,9 @@ function rowToGame(row: GameRow): GameEntry {
     size: row.size,
     addedAt: row.added_at,
     lastPlayedAt: row.last_played_at,
+    originalTitle: row.original_title,
+    hasCover: Boolean(row.cover_path),
+    pinned: row.pinned === 1,
   };
 }
 
@@ -212,6 +228,7 @@ function rowToStoredGame(row: GameRow): StoredGame {
   return {
     ...rowToGame(row),
     romPath: row.rom_path,
+    coverPath: row.cover_path,
   };
 }
 

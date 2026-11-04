@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import type { Route } from "./+types/_index";
 import { GameLibrary } from "../components/GameLibrary";
@@ -6,12 +6,12 @@ import { HelpDialog } from "../components/HelpDialog";
 import { SettingsSheet } from "../components/SettingsSheet";
 import { Toolbar } from "../components/Toolbar";
 import {
-  deleteGame,
   importOpenEmuGames,
   listGames as listClientGames,
   uploadGame,
 } from "../lib/library-client";
 import type { GameEntry } from "../lib/game-types";
+import { readRecentPlays, recentGames, type RecentPlay } from "../lib/recent-plays";
 import { SITE_NAME } from "../lib/site-metadata";
 import {
   readSettings,
@@ -37,6 +37,8 @@ export default function Index({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [games, setGames] = useState<GameEntry[]>(loaderData.games);
+  const [recentPlays, setRecentPlays] = useState<RecentPlay[]>([]);
+  const recent = useMemo(() => recentGames(games, recentPlays), [games, recentPlays]);
   const [importing, setImporting] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -49,6 +51,10 @@ export default function Index({ loaderData }: Route.ComponentProps) {
     if (updateStatus) {
       setStatus(next.length > 0 ? "게임을 선택하세요." : "ROM을 등록해 라이브러리를 시작하세요.");
     }
+  }, []);
+
+  useEffect(() => {
+    setRecentPlays(readRecentPlays());
   }, []);
 
   useEffect(() => {
@@ -87,14 +93,6 @@ export default function Index({ loaderData }: Route.ComponentProps) {
     }
   }
 
-  async function removeGame(gameId: string) {
-    const game = games.find((item) => item.id === gameId);
-    if (!game) return;
-    if (!window.confirm(`${game.title}을(를) 라이브러리에서 삭제할까요?`)) return;
-    await deleteGame(gameId);
-    await refreshGames();
-  }
-
   return (
     <div className="app-shell">
       <Toolbar
@@ -113,6 +111,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
       <main className="workspace workspace--library">
         <GameLibrary
           games={games}
+          recent={recent}
           importing={importing}
           status={status}
           onAdd={() => inputRef.current?.click()}
@@ -120,9 +119,6 @@ export default function Index({ loaderData }: Route.ComponentProps) {
             importFromOpenEmu().catch((err) => setStatus(err instanceof Error ? err.message : String(err)));
           }}
           onLaunch={(gameId) => navigate(`/play/${encodeURIComponent(gameId)}`)}
-          onDelete={(gameId) => {
-            removeGame(gameId).catch((err) => setStatus(err instanceof Error ? err.message : String(err)));
-          }}
         />
       </main>
       <input

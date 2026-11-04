@@ -7,8 +7,8 @@ import { HelpDialog } from "../components/HelpDialog";
 import { LibraryPanel } from "../components/LibraryPanel";
 import { SettingsSheet } from "../components/SettingsSheet";
 import { Toolbar } from "../components/Toolbar";
-import { listGames as listClientGames, touchGame } from "../lib/library-client";
 import type { GameEntry } from "../lib/game-types";
+import { readRecentPlays, recentGames, recordRecentPlay } from "../lib/recent-plays";
 import { SITE_NAME } from "../lib/site-metadata";
 import { readSettings, writeSettings, type UserSettings } from "../lib/storage";
 
@@ -28,7 +28,8 @@ export async function loader({ params }: Route.LoaderArgs) {
 export default function Play({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
   const stageRef = useRef<EmulatorStageHandle | null>(null);
-  const [games, setGames] = useState<GameEntry[]>(loaderData.games);
+  const games: GameEntry[] = loaderData.games;
+  const [recent, setRecent] = useState<GameEntry[]>([]);
   const [running, setRunning] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -43,10 +44,10 @@ export default function Play({ loaderData }: Route.ComponentProps) {
   useEffect(() => {
     let cancelled = false;
     stageRef.current?.openGame(loaderData.game)
-      .then(async () => {
+      .then(() => {
         if (cancelled) return;
-        await touchGame(loaderData.game.id);
-        setGames(await listClientGames());
+        recordRecentPlay(loaderData.game.id);
+        setRecent(recentGames(loaderData.games, readRecentPlays()).map((entry) => entry.game));
       })
       .catch((err) => {
         if (!cancelled) setStatus(err instanceof Error ? err.message : String(err));
@@ -108,7 +109,7 @@ export default function Play({ loaderData }: Route.ComponentProps) {
           onStatus={setStatus}
           onRunningChange={setRunning}
         />
-        <LibraryPanel activeGame={activeGame} games={games} status={status} />
+        <LibraryPanel activeGame={activeGame} games={recent} status={status} />
       </main>
       <SettingsSheet
         open={settingsOpen}
