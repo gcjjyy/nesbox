@@ -12,11 +12,11 @@ interface TouchControlsProps {
   onSave: () => void;
 }
 
-const face: Array<[NesboxButton, string]> = [
-  ["y", "Y"],
-  ["x", "X"],
-  ["b", "B"],
-  ["a", "A"],
+// NES에는 A/B만 있으므로 Y/X 대신 윗줄 전체를 A+B 동시 입력 버튼으로 쓴다(열혈 시리즈 점프 등).
+const face: Array<{ buttons: NesboxButton[]; label: string; combo?: boolean }> = [
+  { buttons: ["a", "b"], label: "A+B", combo: true },
+  { buttons: ["b"], label: "B" },
+  { buttons: ["a"], label: "A" },
 ];
 
 const ICON = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
@@ -93,8 +93,8 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
       const rect = target.getBoundingClientRect();
       const hitSlop = target.closest(".touch-controls__cluster--face") ? 8 : 0;
       if (x >= rect.left - hitSlop && x <= rect.right + hitSlop && y >= rect.top - hitSlop && y <= rect.bottom + hitSlop) {
-        const button = target.dataset.touchButton as NesboxButton | undefined;
-        return { buttons: button ? new Set([button]) : new Set(), track: Boolean(button), stick: false };
+        const buttons = (target.dataset.touchButton ?? "").split("+").filter(Boolean) as NesboxButton[];
+        return { buttons: new Set(buttons), track: buttons.length > 0, stick: false };
       }
     }
 
@@ -258,8 +258,14 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
         </button>
       </div>
       <div className="touch-controls__cluster touch-controls__cluster--face">
-        {face.map(([button, label]) => (
-          <TouchButton key={button} button={button} label={label} pressed={pressedButtons.has(button)} />
+        {face.map(({ buttons, label, combo }) => (
+          <TouchButton
+            key={label}
+            button={buttons}
+            label={label}
+            pressed={buttons.every((button) => pressedButtons.has(button))}
+            combo={combo}
+          />
         ))}
       </div>
     </div>
@@ -313,17 +319,21 @@ function TouchButton({
   label,
   pressed,
   wide,
+  combo,
 }: {
-  button: NesboxButton;
+  button: NesboxButton | NesboxButton[];
   label: string;
   pressed: boolean;
   wide?: boolean;
+  combo?: boolean;
 }) {
   return (
     <button
       type="button"
-      className={`touch-button ${pressed ? "touch-button--pressed" : ""} ${wide ? "touch-button--wide" : ""}`}
-      data-touch-button={button}
+      className={`touch-button ${pressed ? "touch-button--pressed" : ""} ${wide ? "touch-button--wide" : ""} ${
+        combo ? "touch-button--combo" : ""
+      }`}
+      data-touch-button={Array.isArray(button) ? button.join("+") : button}
       aria-label={label}
       draggable={false}
     >

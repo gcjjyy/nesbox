@@ -1327,6 +1327,13 @@ button {
   font-size: 10px;
 }
 
+/* A+B 동시 입력: 기존 Y/X 두 칸을 합친 윗줄 전체 */
+.touch-controls__cluster--face .touch-button--combo {
+  grid-column: 1 / -1;
+  border-radius: 999px;
+  font-size: 15px;
+}
+
 @media (pointer: fine) and (hover: hover) {
   .touch-controls {
     display: none;
