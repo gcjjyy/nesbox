@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Maximize } from "lucide-react";
+import { ArrowLeft, FolderInput, Maximize, Save } from "lucide-react";
 import { useNavigate } from "react-router";
 import type { Route } from "./+types/play.$gameId";
 import { EmulatorStage, type EmulatorStageHandle } from "../components/EmulatorStage";
@@ -31,6 +31,7 @@ export default function Play({ loaderData }: Route.ComponentProps) {
   const games: GameEntry[] = loaderData.games;
   const [recent, setRecent] = useState<GameEntry[]>([]);
   const [running, setRunning] = useState(false);
+  const [hasSavedState, setHasSavedState] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<UserSettings>(() => readSettings());
@@ -76,6 +77,14 @@ export default function Play({ loaderData }: Route.ComponentProps) {
     }
   }
 
+  async function loadState() {
+    try {
+      await stageRef.current?.loadState();
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   return (
     <div className="app-shell app-shell--player">
       <Toolbar
@@ -97,9 +106,19 @@ export default function Play({ loaderData }: Route.ComponentProps) {
           Library
         </button>
         <strong>{activeGame.title}</strong>
-        <button type="button" className="player-command" onClick={() => stageRef.current?.fullscreen()} aria-label="전체 화면">
-          <Maximize size={16} strokeWidth={1.9} aria-hidden />
-        </button>
+        <div className="player-command-bar__actions">
+          <button type="button" className="player-command player-command--state" onClick={saveState} title="상태 저장">
+            <Save size={16} strokeWidth={1.9} aria-hidden />
+            저장
+          </button>
+          <button type="button" className="player-command player-command--state" onClick={loadState} disabled={!hasSavedState} title="저장한 상태 불러오기">
+            <FolderInput size={16} strokeWidth={1.9} aria-hidden />
+            불러오기
+          </button>
+          <button type="button" className="player-command" onClick={() => stageRef.current?.fullscreen()} aria-label="전체 화면">
+            <Maximize size={16} strokeWidth={1.9} aria-hidden />
+          </button>
+        </div>
       </div>
       <main className="workspace workspace--player">
         <EmulatorStage
@@ -108,6 +127,7 @@ export default function Play({ loaderData }: Route.ComponentProps) {
           onPhaseChange={() => undefined}
           onStatus={setStatus}
           onRunningChange={setRunning}
+          onSavedStateChange={setHasSavedState}
         />
         <LibraryPanel activeGame={activeGame} games={recent} status={status} />
       </main>

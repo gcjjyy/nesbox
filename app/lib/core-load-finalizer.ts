@@ -2,13 +2,10 @@ export interface AssignedCoreLoadOptions {
   prepare: () => void;
   fetchRom: () => Promise<Uint8Array>;
   loadRom: (rom: Uint8Array) => Promise<void>;
-  readSavedState: () => Promise<Uint8Array | null>;
-  loadSavedState: (state: Uint8Array) => Promise<void>;
   isCurrent: () => boolean;
   dispose: () => void;
   start: () => Promise<void> | void;
   onRomLoaded: () => void;
-  onRestored: () => void;
   onStarted: () => void;
   onFailure: (error: unknown) => void;
 }
@@ -28,15 +25,7 @@ export async function loadAssignedCore(options: AssignedCoreLoadOptions): Promis
     if (!options.isCurrent()) return disposeStale(options);
     options.onRomLoaded();
 
-    const state = await options.readSavedState();
-    if (!options.isCurrent()) return disposeStale(options);
-    if (state) {
-      await options.loadSavedState(state);
-      if (!options.isCurrent()) return disposeStale(options);
-      options.onRestored();
-    }
-
-    if (!options.isCurrent()) return disposeStale(options);
+    // 저장 상태는 자동으로 복원하지 않는다. 불러오기 버튼으로만 되돌린다.
     await options.start();
     if (!options.isCurrent()) return disposeStale(options);
     options.onStarted();

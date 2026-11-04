@@ -7,5 +7,4 @@ export default [
   route("api/games/:gameId", "routes/api.games.$gameId.tsx"),
   route("api/games/:gameId/rom", "routes/api.games.$gameId.rom.tsx"),
   route("api/games/:gameId/cover", "routes/api.games.$gameId.cover.tsx"),
-  route("api/states/:gameId/:emulatorId/:slot", "routes/api.states.$gameId.$emulatorId.$slot.tsx"),
 ] satisfies RouteConfig;

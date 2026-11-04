@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Pause, Play, RotateCcw, Save } from "lucide-react";
+import { FolderInput, Pause, Play, RotateCcw, Save } from "lucide-react";
 import type { NesboxButton } from "../lib/core-contract";
 import { stickButtons } from "../lib/touch-stick";
 
@@ -10,6 +10,8 @@ interface TouchControlsProps {
   onRunToggle: () => void;
   onReset: () => void;
   onSave: () => void;
+  onLoad: () => void;
+  canLoad: boolean;
 }
 
 // NES에는 A/B만 있으므로 Y/X 대신 윗줄 전체를 A+B 동시 입력 버튼으로 쓴다(열혈 시리즈 점프 등).
@@ -31,7 +33,7 @@ interface TouchHit {
   stick: boolean;
 }
 
-export function TouchControls({ enabled, running, onButton, onRunToggle, onReset, onSave }: TouchControlsProps) {
+export function TouchControls({ enabled, running, onButton, onRunToggle, onReset, onSave, onLoad, canLoad }: TouchControlsProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const activePointersRef = useRef(new Map<number, ButtonSet>());
   // 스틱에서 시작한 터치는 손을 뗄 때까지 스틱에 묶어 둔다.
@@ -255,6 +257,9 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
         </button>
         <button type="button" className="touch-action" onClick={onSave} title="상태 저장" aria-label="상태 저장">
           <Save {...ICON} />
+        </button>
+        <button type="button" className="touch-action" onClick={onLoad} disabled={!canLoad} title="불러오기" aria-label="불러오기">
+          <FolderInput {...ICON} />
         </button>
       </div>
       <div className="touch-controls__cluster touch-controls__cluster--face">

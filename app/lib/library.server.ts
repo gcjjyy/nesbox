@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { defaultEmulatorForFile } from "./emulator-registry";
-import { extensionOf, type EmulatorId } from "./rom";
+import { extensionOf } from "./rom";
 import type { GameEntry, StoredGame } from "./game-types";
 
 export const DATA_DIR = process.env.NESBOX_DATA_DIR ?? path.join(process.cwd(), "data");
@@ -50,15 +50,8 @@ export function getLibraryDb(): Database.Database {
       last_played_at INTEGER
     );
 
-    CREATE TABLE IF NOT EXISTS save_states (
-      game_id TEXT NOT NULL,
-      emulator_id TEXT NOT NULL,
-      slot INTEGER NOT NULL,
-      bytes BLOB NOT NULL,
-      updated_at INTEGER NOT NULL,
-      PRIMARY KEY (game_id, emulator_id, slot),
-      FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
-    );
+    -- 상태 저장은 브라우저(IndexedDB)에만 한다. 예전 서버 저장 테이블은 비어 있어 제거한다.
+    DROP TABLE IF EXISTS save_states;
   `);
   migrateGameColumns(db);
   return db;
@@ -93,24 +86,6 @@ export function setGameCover(gameId: string, coverPath: string, originalTitle: s
 
 export function setGamePinned(gameId: string, pinned: boolean): void {
   getLibraryDb().prepare("UPDATE games SET pinned = ? WHERE id = ?").run(pinned ? 1 : 0, gameId);
-}
-
-export function saveState(gameId: string, emulatorId: EmulatorId, slot: number, bytes: Uint8Array): void {
-  getLibraryDb()
-    .prepare(`
-      INSERT INTO save_states (game_id, emulator_id, slot, bytes, updated_at)
-      VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(game_id, emulator_id, slot)
-      DO UPDATE SET bytes = excluded.bytes, updated_at = excluded.updated_at
-    `)
-    .run(gameId, emulatorId, slot, Buffer.from(bytes), Date.now());
-}
-
-export function loadState(gameId: string, emulatorId: EmulatorId, slot: number): Buffer | null {
-  const row = getLibraryDb()
-    .prepare("SELECT bytes FROM save_states WHERE game_id = ? AND emulator_id = ? AND slot = ?")
-    .get(gameId, emulatorId, slot) as { bytes: Buffer } | undefined;
-  return row?.bytes ?? null;
 }
 
 export function importOpenEmuGames(): { imported: number; games: GameEntry[] } {

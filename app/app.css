@@ -175,6 +175,27 @@ button {
   font-weight: 700;
 }
 
+.player-command-bar__actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+/* 저장/불러오기는 터치 컨트롤이 없는(마우스) 환경에서만 상단 바에 보여 준다. */
+.player-command--state {
+  display: none;
+}
+
+@media (pointer: fine) and (hover: hover) {
+  .player-command--state {
+    display: inline-flex;
+  }
+}
+
+.player-command:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .player-command--back {
   border-color: color-mix(in srgb, var(--red) 55%, var(--line));
   background: color-mix(in srgb, var(--red) 16%, var(--panel-2));
@@ -1298,6 +1319,11 @@ button {
   -webkit-user-select: none;
 }
 
+.touch-action:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .touch-button {
   min-width: 64px;
   height: 64px;
@@ -1677,7 +1703,7 @@ button {
   }
 
   .player-command-bar {
-    grid-template-columns: auto minmax(0, 1fr) 36px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     min-height: 38px;
     gap: 8px;
     padding: 4px 8px;
@@ -1757,7 +1783,7 @@ button {
   }
 
   .touch-action {
-    width: 42px;
+    width: 36px;
     height: 36px;
   }
 

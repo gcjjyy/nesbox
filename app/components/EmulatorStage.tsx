@@ -20,6 +20,7 @@ export interface EmulatorStageHandle {
   toggleRun: () => void;
   reset: () => void;
   saveState: () => Promise<void>;
+  loadState: () => Promise<void>;
   fullscreen: () => Promise<void>;
   dispose: () => void;
 }
@@ -29,6 +30,7 @@ export interface EmulatorStageProps {
   onPhaseChange: (phase: EmulatorPhase) => void;
   onStatus: (status: string) => void;
   onRunningChange: (running: boolean) => void;
+  onSavedStateChange?: (hasSavedState: boolean) => void;
   ref?: Ref<EmulatorStageHandle>;
 }
 
@@ -92,7 +94,7 @@ function hasTouchSurface() {
   return window.matchMedia?.("(pointer: coarse)").matches ?? false;
 }
 
-export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChange, ref }: EmulatorStageProps) {
+export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChange, onSavedStateChange, ref }: EmulatorStageProps) {
   const shellRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const coreRef = useRef<NesboxCore | null>(null);
@@ -109,6 +111,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   const [screenSystem, setScreenSystem] = useState<SystemId>("nes");
   const [screenPixels, setScreenPixels] = useState(screenSizeForSystem("nes"));
   const [touchSurface, setTouchSurface] = useState(false);
+  const [hasSavedState, setHasSavedState] = useState(false);
   const audioState = useAudioSessionState();
   const audioPromptVisible = audioPromptRequired(phase === "running", audioState);
 
@@ -117,6 +120,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     toggleRun,
     reset,
     saveState,
+    loadState,
     fullscreen,
     dispose: shutdownCore,
   }));
@@ -295,6 +299,12 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     setScreenSystem(game.system);
     setScreenPixels(screenSizeForSystem(game.system));
     gameRef.current = game;
+    updateSavedState(false);
+    loadLocalStateBytes(game.id, game.emulatorId, 0)
+      .then((bytes) => {
+        if (gameRef.current?.id === game.id) updateSavedState(bytes !== null);
+      })
+      .catch(() => undefined);
     const profile = emulatorById(game.emulatorId);
     if (!profile) {
       setPhase("error");
@@ -338,15 +348,12 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
       prepare: () => core.setVolume(settings.volume),
       fetchRom: () => fetchRomBytes(game.id),
       loadRom: (romBytes) => core.loadRom(romBytes, game.fileName),
-      readSavedState: () => loadLocalStateBytes(game.id, game.emulatorId, 0),
-      loadSavedState: (state) => core.loadState(state),
       isCurrent: () => !isStaleLoad(seq) && coreRef.current === core,
       dispose: disposeLoadCore,
       start: () => core.start(),
       onRomLoaded: () => {
         if (canvasRef.current) syncScreenPixelsFromCanvas(canvasRef.current);
       },
-      onRestored: () => onStatus("이 브라우저에 저장된 상태를 복원했습니다."),
       onStarted: () => {
         setPhase("running");
         onRunningChange(true);
@@ -400,7 +407,35 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     if (!core || !game) return;
     const bytes = await core.saveState();
     await saveLocalStateBytes(game.id, game.emulatorId, 0, bytes);
-    onStatus(`이 브라우저의 슬롯 0 저장 완료 (${Math.round(bytes.byteLength / 1024)} KB)`);
+    updateSavedState(true);
+    onStatus(`이 브라우저에 저장했습니다 (${Math.round(bytes.byteLength / 1024)} KB)`);
+  }
+
+  async function loadState() {
+    const core = coreRef.current;
+    const game = gameRef.current;
+    if (!core || !game) return;
+    const bytes = await loadLocalStateBytes(game.id, game.emulatorId, 0);
+    if (coreRef.current !== core || gameRef.current !== game) return;
+    if (!bytes) {
+      updateSavedState(false);
+      onStatus("이 브라우저에 저장된 상태가 없습니다.");
+      return;
+    }
+    await core.loadState(bytes);
+    if (coreRef.current !== core) return;
+    if (phase !== "running") {
+      if (phase === "paused") core.resume();
+      else await core.start();
+      setPhase("running");
+      onRunningChange(true);
+    }
+    onStatus("저장한 상태를 불러왔습니다.");
+  }
+
+  function updateSavedState(next: boolean) {
+    setHasSavedState(next);
+    onSavedStateChange?.(next);
   }
 
   async function fullscreen() {
@@ -514,8 +549,12 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
         onButton={onTouchButton}
         onRunToggle={toggleRun}
         onReset={reset}
+        canLoad={hasSavedState}
         onSave={() => {
-          saveState().catch((err) => onStatus(err instanceof Error ? err.message : String(err)));
+          saveState().catch((err) => onStatus(statusFromError(err)));
+        }}
+        onLoad={() => {
+          loadState().catch((err) => onStatus(statusFromError(err)));
         }}
       />
     </section>

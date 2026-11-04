@@ -17,7 +17,6 @@ function makeLoad(overrides: Partial<Parameters<typeof loadAssignedCore>[0]> = {
   const core = {
     dispose: vi.fn(),
     loadRom: vi.fn(async () => undefined),
-    loadState: vi.fn(async () => undefined),
     start: vi.fn(),
   };
   let phase = "loading-core";
@@ -27,8 +26,6 @@ function makeLoad(overrides: Partial<Parameters<typeof loadAssignedCore>[0]> = {
     prepare: vi.fn(),
     fetchRom: async () => new Uint8Array([7, 8]),
     loadRom: core.loadRom,
-    readSavedState: async () => new Uint8Array([1, 2, 3]),
-    loadSavedState: core.loadState,
     isCurrent: () => current && assignedCore === core,
     dispose: () => {
       if (assignedCore === core) assignedCore = null;
@@ -36,7 +33,6 @@ function makeLoad(overrides: Partial<Parameters<typeof loadAssignedCore>[0]> = {
     },
     start: core.start,
     onRomLoaded: () => statuses.push("rom-loaded"),
-    onRestored: () => statuses.push("restored"),
     onStarted: () => {
       phase = "running";
       running = true;
@@ -64,15 +60,13 @@ function makeLoad(overrides: Partial<Parameters<typeof loadAssignedCore>[0]> = {
 }
 
 async function expectCurrentFailure(
-  stage: "prepare" | "fetchRom" | "loadRom" | "readSavedState" | "loadSavedState" | "start",
+  stage: "prepare" | "fetchRom" | "loadRom" | "start",
 ) {
   const error = new Error(`${stage} failed`);
   const overrides: Partial<Parameters<typeof loadAssignedCore>[0]> = {};
   if (stage === "prepare") overrides.prepare = () => { throw error; };
   if (stage === "fetchRom") overrides.fetchRom = async () => { throw error; };
   if (stage === "loadRom") overrides.loadRom = async () => { throw error; };
-  if (stage === "readSavedState") overrides.readSavedState = async () => { throw error; };
-  if (stage === "loadSavedState") overrides.loadSavedState = async () => { throw error; };
   const failingStart = stage === "start" ? vi.fn(() => { throw error; }) : null;
   if (failingStart) overrides.start = failingStart;
   const load = makeLoad(overrides);
@@ -88,38 +82,38 @@ async function expectCurrentFailure(
 }
 
 describe("loadAssignedCore", () => {
-  it("does not resurrect an old core when a new game loads during successful state restoration", async () => {
-    const loadState = deferred<void>();
-    const loadSavedState = vi.fn(() => loadState.promise);
-    const load = makeLoad({ loadSavedState });
-    await vi.waitFor(() => expect(loadSavedState).toHaveBeenCalledTimes(1));
+  it("does not resurrect an old core when a new game loads while the ROM is loading", async () => {
+    const romLoad = deferred<void>();
+    const loadRom = vi.fn(() => romLoad.promise);
+    const load = makeLoad({ loadRom });
+    await vi.waitFor(() => expect(loadRom).toHaveBeenCalledTimes(1));
 
     load.invalidate();
-    loadState.resolve();
+    romLoad.resolve();
 
     await expect(load.loading).resolves.toEqual({ kind: "stale" });
     expect(load.core.dispose).toHaveBeenCalledTimes(1);
     expect(load.core.start).not.toHaveBeenCalled();
-    expect(load.statuses).toEqual(["rom-loaded"]);
+    expect(load.statuses).toEqual([]);
   });
 
-  it("does not report a failure when unmount happens before state restoration rejects", async () => {
-    const loadState = deferred<void>();
-    const loadSavedState = vi.fn(() => loadState.promise);
-    const load = makeLoad({ loadSavedState });
-    await vi.waitFor(() => expect(loadSavedState).toHaveBeenCalledTimes(1));
+  it("does not report a failure when unmount happens before the ROM load rejects", async () => {
+    const romLoad = deferred<void>();
+    const loadRom = vi.fn(() => romLoad.promise);
+    const load = makeLoad({ loadRom });
+    await vi.waitFor(() => expect(loadRom).toHaveBeenCalledTimes(1));
 
     load.invalidate();
-    loadState.reject(new Error("bad state"));
+    romLoad.reject(new Error("bad rom"));
 
     await expect(load.loading).resolves.toEqual({ kind: "stale" });
     expect(load.core.dispose).toHaveBeenCalledTimes(1);
     expect(load.core.start).not.toHaveBeenCalled();
     expect(load.phase()).toBe("loading-core");
-    expect(load.statuses).toEqual(["rom-loaded"]);
+    expect(load.statuses).toEqual([]);
   });
 
-  it.each(["prepare", "fetchRom", "loadRom", "readSavedState", "loadSavedState", "start"] as const)(
+  it.each(["prepare", "fetchRom", "loadRom", "start"] as const)(
     "disposes and reports a current-generation %s failure",
     expectCurrentFailure,
   );
@@ -180,7 +174,7 @@ describe("loadAssignedCore", () => {
     expect(load.hasAssignedCore()).toBe(false);
     expect(load.phase()).toBe("error");
     expect(load.running()).toBe(false);
-    expect(load.statuses).toEqual(["rom-loaded", "restored", error.message]);
+    expect(load.statuses).toEqual(["rom-loaded", error.message]);
   });
 
   it("silently retires a core invalidated while asynchronous start succeeds", async () => {
@@ -197,10 +191,10 @@ describe("loadAssignedCore", () => {
     expect(load.core.start).not.toHaveBeenCalled();
     expect(load.phase()).toBe("loading-core");
     expect(load.running()).toBe(false);
-    expect(load.statuses).toEqual(["rom-loaded", "restored"]);
+    expect(load.statuses).toEqual(["rom-loaded"]);
   });
 
-  it("starts only after the ROM and saved state finish for the current generation", async () => {
+  it("starts only after the ROM finishes for the current generation", async () => {
     const load = makeLoad();
 
     await expect(load.loading).resolves.toEqual({ kind: "started" });
@@ -208,6 +202,6 @@ describe("loadAssignedCore", () => {
     expect(load.core.start).toHaveBeenCalledTimes(1);
     expect(load.phase()).toBe("running");
     expect(load.running()).toBe(true);
-    expect(load.statuses).toEqual(["rom-loaded", "restored", "started"]);
+    expect(load.statuses).toEqual(["rom-loaded", "started"]);
   });
 });
