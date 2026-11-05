@@ -15,9 +15,6 @@ const gamepadRows = [
   ["방향", "십자키 또는 왼쪽 스틱"],
   ["B", "아래쪽 버튼"],
   ["A", "오른쪽 버튼"],
-  ["Y", "왼쪽 버튼"],
-  ["X", "위쪽 버튼"],
-  ["L / R", "왼쪽 / 오른쪽 숄더"],
   ["스타트", "Start / Menu"],
   ["셀렉트", "Back / View"],
 ];
@@ -45,7 +42,7 @@ export function HelpDialog({ open, keyboardLayout, onClose }: HelpDialogProps) {
             </h3>
             <div className="control-map__keys">
               <KeyboardLayoutPreview layoutId={keyboardLayout} />
-              <p>설정에서 배치를 바꿀 수 있어요. Y / X는 SNES 전용.</p>
+              <p>설정에서 배치를 바꿀 수 있어요.</p>
             </div>
           </section>
           <ControlTable title="게임패드" icon={<Gamepad2 {...ICON} />} rows={gamepadRows} />

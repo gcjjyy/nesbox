@@ -24,9 +24,17 @@ describe("keyboard layouts", () => {
     expect(map.get("KeyZ")).toBeUndefined();
   });
 
+  it("binds no Y / X keys since the NES pad has only A and B", () => {
+    for (const id of ["arrows", "wasd"] as const) {
+      const buttons = [...keyboardMap(id).values()];
+      expect(buttons).not.toContain("y");
+      expect(buttons).not.toContain("x");
+    }
+  });
+
   it("gives every key exactly one button per layout", () => {
     for (const id of ["arrows", "wasd"] as const) {
-      expect(keyboardMap(id).size).toBe(11);
+      expect(keyboardMap(id).size).toBe(9);
     }
   });
 

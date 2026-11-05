@@ -39,10 +39,6 @@ export interface EmulatorStageProps {
 const GAMEPAD_BUTTON_MAP = new Map<number, NesboxButton>([
   [0, "b"],
   [1, "a"],
-  [2, "y"],
-  [3, "x"],
-  [4, "l"],
-  [5, "r"],
   [8, "select"],
   [9, "start"],
   [12, "up"],

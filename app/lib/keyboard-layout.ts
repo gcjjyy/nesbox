@@ -13,11 +13,9 @@ export interface KeyboardLayout {
   name: string;
   /** D-pad keys in up/left/down/right order. */
   dpad: { up: KeyBinding; left: KeyBinding; down: KeyBinding; right: KeyBinding };
-  /** Face buttons B, A (and SNES Y, X). */
+  /** NES 패드에는 B, A 두 버튼뿐이다. */
   b: KeyBinding;
   a: KeyBinding;
-  y: KeyBinding;
-  x: KeyBinding;
 }
 
 const key = (code: string, label: string, button: NesboxButton): KeyBinding => ({ code, label, button });
@@ -34,8 +32,6 @@ export const KEYBOARD_LAYOUTS: Record<KeyboardLayoutId, KeyboardLayout> = {
     },
     b: key("KeyZ", "Z", "b"),
     a: key("KeyX", "X", "a"),
-    y: key("KeyA", "A", "y"),
-    x: key("KeyS", "S", "x"),
   },
   wasd: {
     id: "wasd",
@@ -48,8 +44,6 @@ export const KEYBOARD_LAYOUTS: Record<KeyboardLayoutId, KeyboardLayout> = {
     },
     b: key("BracketLeft", "[", "b"),
     a: key("BracketRight", "]", "a"),
-    y: key("Semicolon", ";", "y"),
-    x: key("Quote", "'", "x"),
   },
 };
 
@@ -67,6 +61,6 @@ export function isKeyboardLayoutId(value: unknown): value is KeyboardLayoutId {
 
 export function keyboardMap(id: KeyboardLayoutId): Map<string, NesboxButton> {
   const layout = KEYBOARD_LAYOUTS[id];
-  const bindings = [...Object.values(layout.dpad), layout.b, layout.a, layout.y, layout.x, ...SHARED_BINDINGS];
+  const bindings = [...Object.values(layout.dpad), layout.b, layout.a, ...SHARED_BINDINGS];
   return new Map(bindings.map((binding) => [binding.code, binding.button]));
 }

@@ -2019,16 +2019,6 @@ button {
   text-transform: uppercase;
 }
 
-.keycap--secondary kbd {
-  border-color: #353d3f;
-  color: var(--muted);
-  font-weight: 500;
-}
-
-.keycap--secondary small {
-  opacity: 0.7;
-}
-
 .control-map__keys {
   display: grid;
   gap: 12px;
