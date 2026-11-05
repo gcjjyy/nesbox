@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import type { Route } from "./+types/play.$gameId";
 import { EmulatorStage, type EmulatorStageHandle } from "../components/EmulatorStage";
 import { HelpDialog } from "../components/HelpDialog";
+import { WelcomeDialog } from "../components/WelcomeDialog";
 import { LibraryPanel } from "../components/LibraryPanel";
 import { SettingsSheet } from "../components/SettingsSheet";
 import { Toolbar } from "../components/Toolbar";
@@ -137,7 +138,8 @@ export default function Play({ loaderData }: Route.ComponentProps) {
         onChange={updateSettings}
         onClose={() => setSettingsOpen(false)}
       />
-      <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <HelpDialog open={helpOpen} keyboardLayout={settings.keyboardLayout} onClose={() => setHelpOpen(false)} />
+      <WelcomeDialog settings={settings} onChange={updateSettings} />
     </div>
   );
 }

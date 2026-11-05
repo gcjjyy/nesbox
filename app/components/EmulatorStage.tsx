@@ -10,6 +10,8 @@ import { fetchRomBytes } from "../lib/library-client";
 import type { SystemId } from "../lib/rom";
 import { loadLocalStateBytes, saveLocalStateBytes } from "../lib/state-storage";
 import type { UserSettings } from "../lib/storage";
+import { keyboardMap } from "../lib/keyboard-layout";
+import { hasTouchSurface } from "../lib/touch-surface";
 import { audioPromptRequired, audioSession } from "../lib/audio-session";
 import { audioCoreRecoveryStatus, audioUnlockStatus } from "../lib/audio-unlock-policy";
 import { useAudioSessionState } from "../lib/use-audio-session-state";
@@ -33,20 +35,6 @@ export interface EmulatorStageProps {
   onSavedStateChange?: (hasSavedState: boolean) => void;
   ref?: Ref<EmulatorStageHandle>;
 }
-
-const KEYBOARD_MAP = new Map<string, NesboxButton>([
-  ["ArrowUp", "up"],
-  ["ArrowDown", "down"],
-  ["ArrowLeft", "left"],
-  ["ArrowRight", "right"],
-  ["KeyZ", "b"],
-  ["KeyX", "a"],
-  ["KeyA", "y"],
-  ["KeyS", "x"],
-  ["Enter", "start"],
-  ["ShiftRight", "select"],
-  ["ShiftLeft", "select"],
-]);
 
 const GAMEPAD_BUTTON_MAP = new Map<number, NesboxButton>([
   [0, "b"],
@@ -86,12 +74,6 @@ interface AudioUnlockAttempt {
 
 function screenSizeForSystem(system: SystemId) {
   return system === "snes" ? SCREEN_SIZES.snes : SCREEN_SIZES.nes;
-}
-
-function hasTouchSurface() {
-  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
-  if (navigator.maxTouchPoints > 0) return true;
-  return window.matchMedia?.("(pointer: coarse)").matches ?? false;
 }
 
 export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChange, onSavedStateChange, ref }: EmulatorStageProps) {
@@ -134,11 +116,17 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   }, [onPhaseChange, phase]);
 
   useEffect(() => {
+    const map = keyboardMap(settings.keyboardLayout);
+    const held = new Set<NesboxButton>();
     const onKey = (event: KeyboardEvent, pressed: boolean) => {
-      const button = KEYBOARD_MAP.get(event.code);
+      const button = map.get(event.code);
       if (!button || !coreRef.current) return;
+      // WASD 배치에서도 검색창 등에 글자를 칠 수 있도록 입력 필드에서는 가로채지 않는다.
+      if (pressed && event.target instanceof HTMLElement && event.target.matches("input:not([type=range]):not([type=checkbox]):not([type=radio]), textarea, [contenteditable]")) return;
       event.preventDefault();
       coreRef.current.setButton(0, button, pressed);
+      if (pressed) held.add(button);
+      else held.delete(button);
     };
     const down = (event: KeyboardEvent) => onKey(event, true);
     const up = (event: KeyboardEvent) => onKey(event, false);
@@ -147,8 +135,10 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
+      // 배치를 바꾸는 순간 눌려 있던 버튼이 남지 않도록 놓아 준다.
+      for (const button of held) coreRef.current?.setButton(0, button, false);
     };
-  }, []);
+  }, [settings.keyboardLayout]);
 
   useEffect(() => {
     let raf = 0;

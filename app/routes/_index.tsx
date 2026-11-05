@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import type { Route } from "./+types/_index";
 import { GameLibrary } from "../components/GameLibrary";
 import { HelpDialog } from "../components/HelpDialog";
+import { WelcomeDialog } from "../components/WelcomeDialog";
 import { SettingsSheet } from "../components/SettingsSheet";
 import { Toolbar } from "../components/Toolbar";
 import {
@@ -134,7 +135,8 @@ export default function Index({ loaderData }: Route.ComponentProps) {
         onChange={updateSettings}
         onClose={() => setSettingsOpen(false)}
       />
-      <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <HelpDialog open={helpOpen} keyboardLayout={settings.keyboardLayout} onClose={() => setHelpOpen(false)} />
+      <WelcomeDialog settings={settings} onChange={updateSettings} />
     </div>
   );
 }

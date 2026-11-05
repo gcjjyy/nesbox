@@ -1,5 +1,7 @@
-import { Monitor, Smartphone, Volume2, X } from "lucide-react";
+import { Keyboard, Monitor, Smartphone, Volume2, X } from "lucide-react";
+import { KEYBOARD_LAYOUTS, type KeyboardLayoutId } from "../lib/keyboard-layout";
 import type { UserSettings } from "../lib/storage";
+import { KeyboardLayoutPreview } from "./KeyboardLayoutPreview";
 
 const ICON = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
 
@@ -17,7 +19,7 @@ export function SettingsSheet({ open, settings, onChange, onClose }: SettingsShe
     <div className="sheet-backdrop" role="presentation" onMouseDown={onClose}>
       <section className="settings-sheet" role="dialog" aria-modal="true" aria-label="설정" onMouseDown={(event) => event.stopPropagation()}>
         <header>
-          <h2>Settings</h2>
+          <h2>설정</h2>
           <button type="button" className="icon-button" onClick={onClose} aria-label="닫기" title="닫기">
             <X {...ICON} />
           </button>
@@ -25,7 +27,7 @@ export function SettingsSheet({ open, settings, onChange, onClose }: SettingsShe
         <label className="setting-row">
           <span>
             <Volume2 {...ICON} />
-            Volume
+            볼륨
           </span>
           <input
             type="range"
@@ -39,7 +41,7 @@ export function SettingsSheet({ open, settings, onChange, onClose }: SettingsShe
         <label className="setting-row setting-row--switch">
           <span>
             <Monitor {...ICON} />
-            Integer scale
+            정수 배율
           </span>
           <input
             type="checkbox"
@@ -50,7 +52,7 @@ export function SettingsSheet({ open, settings, onChange, onClose }: SettingsShe
         <label className="setting-row setting-row--switch">
           <span>
             <Smartphone {...ICON} />
-            Touch controls
+            터치 버튼
           </span>
           <input
             type="checkbox"
@@ -58,6 +60,29 @@ export function SettingsSheet({ open, settings, onChange, onClose }: SettingsShe
             onChange={(event) => onChange({ ...settings, touchControls: event.target.checked })}
           />
         </label>
+        <fieldset className="setting-row setting-row--keys">
+          <legend>
+            <span>
+              <Keyboard {...ICON} />
+              PC 키 배치
+            </span>
+          </legend>
+          <div className="key-layout-options">
+            {(Object.keys(KEYBOARD_LAYOUTS) as KeyboardLayoutId[]).map((id) => (
+              <label key={id} className="key-layout-option">
+                <input
+                  type="radio"
+                  name="keyboard-layout"
+                  value={id}
+                  checked={settings.keyboardLayout === id}
+                  onChange={() => onChange({ ...settings, keyboardLayout: id })}
+                />
+                <span className="key-layout-option__name">{KEYBOARD_LAYOUTS[id].name}</span>
+                <KeyboardLayoutPreview layoutId={id} />
+              </label>
+            ))}
+          </div>
+        </fieldset>
       </section>
     </div>
   );
