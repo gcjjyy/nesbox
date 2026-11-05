@@ -1,4 +1,4 @@
-import { KEYBOARD_LAYOUTS, type KeyBinding, type KeyboardLayoutId } from "../lib/keyboard-layout";
+import { KEYBOARD_LAYOUT as layout, type KeyBinding } from "../lib/keyboard-layout";
 
 const BUTTON_LABEL: Record<string, string> = {
   up: "위",
@@ -20,11 +20,10 @@ function Keycap({ binding, wide }: { binding: KeyBinding | { label: string; butt
   );
 }
 
-/** 선택한 키 배치를 실제 키보드처럼 키캡 모양으로 보여 준다. */
-export function KeyboardLayoutPreview({ layoutId }: { layoutId: KeyboardLayoutId }) {
-  const layout = KEYBOARD_LAYOUTS[layoutId];
+/** PC 키 배치를 실제 키보드처럼 키캡 모양으로 보여 준다. */
+export function KeyboardLayoutPreview() {
   return (
-    <div className="keymap" aria-label={`${layout.name} 키 배치`}>
+    <div className="keymap" aria-label="PC 키 배치">
       <div className="keymap__dpad">
         <Keycap binding={layout.dpad.up} />
         <Keycap binding={layout.dpad.left} />

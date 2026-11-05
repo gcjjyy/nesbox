@@ -1,13 +1,11 @@
 import { Gamepad2, Keyboard, X } from "lucide-react";
 import type { ReactNode } from "react";
-import { KEYBOARD_LAYOUTS, type KeyboardLayoutId } from "../lib/keyboard-layout";
 import { KeyboardLayoutPreview } from "./KeyboardLayoutPreview";
 
 const ICON = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
 
 interface HelpDialogProps {
   open: boolean;
-  keyboardLayout: KeyboardLayoutId;
   onClose: () => void;
 }
 
@@ -19,7 +17,7 @@ const gamepadRows = [
   ["셀렉트", "Back / View"],
 ];
 
-export function HelpDialog({ open, keyboardLayout, onClose }: HelpDialogProps) {
+export function HelpDialog({ open, onClose }: HelpDialogProps) {
   if (!open) return null;
 
   return (
@@ -35,14 +33,13 @@ export function HelpDialog({ open, keyboardLayout, onClose }: HelpDialogProps) {
           </button>
         </header>
         <div className="help-dialog__grid">
-          <section className="control-map" aria-label="Keyboard">
+          <section className="control-map" aria-label="키보드">
             <h3>
               <Keyboard {...ICON} />
-              키보드 · {KEYBOARD_LAYOUTS[keyboardLayout].name}
+              키보드
             </h3>
             <div className="control-map__keys">
-              <KeyboardLayoutPreview layoutId={keyboardLayout} />
-              <p>설정에서 배치를 바꿀 수 있어요.</p>
+              <KeyboardLayoutPreview />
             </div>
           </section>
           <ControlTable title="게임패드" icon={<Gamepad2 {...ICON} />} rows={gamepadRows} />

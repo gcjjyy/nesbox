@@ -1,7 +1,5 @@
-import { Keyboard, Monitor, Smartphone, Volume2, X } from "lucide-react";
-import { KEYBOARD_LAYOUTS, type KeyboardLayoutId } from "../lib/keyboard-layout";
+import { Monitor, Smartphone, Volume2, X } from "lucide-react";
 import type { UserSettings } from "../lib/storage";
-import { KeyboardLayoutPreview } from "./KeyboardLayoutPreview";
 
 const ICON = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
 
@@ -60,29 +58,6 @@ export function SettingsSheet({ open, settings, onChange, onClose }: SettingsShe
             onChange={(event) => onChange({ ...settings, touchControls: event.target.checked })}
           />
         </label>
-        <fieldset className="setting-row setting-row--keys">
-          <legend>
-            <span>
-              <Keyboard {...ICON} />
-              PC 키 배치
-            </span>
-          </legend>
-          <div className="key-layout-options">
-            {(Object.keys(KEYBOARD_LAYOUTS) as KeyboardLayoutId[]).map((id) => (
-              <label key={id} className="key-layout-option">
-                <input
-                  type="radio"
-                  name="keyboard-layout"
-                  value={id}
-                  checked={settings.keyboardLayout === id}
-                  onChange={() => onChange({ ...settings, keyboardLayout: id })}
-                />
-                <span className="key-layout-option__name">{KEYBOARD_LAYOUTS[id].name}</span>
-                <KeyboardLayoutPreview layoutId={id} />
-              </label>
-            ))}
-          </div>
-        </fieldset>
       </section>
     </div>
   );

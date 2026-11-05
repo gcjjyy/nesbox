@@ -1,19 +1,15 @@
-import { DEFAULT_KEYBOARD_LAYOUT, isKeyboardLayoutId, type KeyboardLayoutId } from "./keyboard-layout";
-
 const SETTINGS_KEY = "nesbox:settings";
 
 export interface UserSettings {
   volume: number;
   integerScale: boolean;
   touchControls: boolean;
-  keyboardLayout: KeyboardLayoutId;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
   volume: 0.75,
   integerScale: false,
   touchControls: true,
-  keyboardLayout: DEFAULT_KEYBOARD_LAYOUT,
 };
 
 export function readSettings(): UserSettings {
@@ -24,7 +20,6 @@ export function readSettings(): UserSettings {
       volume: clampNumber(parsed.volume, 0, 1, DEFAULT_SETTINGS.volume),
       integerScale: Boolean(parsed.integerScale ?? DEFAULT_SETTINGS.integerScale),
       touchControls: Boolean(parsed.touchControls ?? DEFAULT_SETTINGS.touchControls),
-      keyboardLayout: isKeyboardLayoutId(parsed.keyboardLayout) ? parsed.keyboardLayout : DEFAULT_SETTINGS.keyboardLayout,
     };
   } catch {
     return DEFAULT_SETTINGS;

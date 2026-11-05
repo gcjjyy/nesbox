@@ -135,8 +135,8 @@ export default function Index({ loaderData }: Route.ComponentProps) {
         onChange={updateSettings}
         onClose={() => setSettingsOpen(false)}
       />
-      <HelpDialog open={helpOpen} keyboardLayout={settings.keyboardLayout} onClose={() => setHelpOpen(false)} />
-      <WelcomeDialog settings={settings} onChange={updateSettings} />
+      <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <WelcomeDialog />
     </div>
   );
 }
