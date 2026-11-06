@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import Database from "better-sqlite3";
@@ -105,6 +105,47 @@ describe("applyArchiveImport", () => {
     expect(listStoredGames(fixture.database)).toEqual([]);
     expect(existsSync(conflictingPath)).toBe(true);
   });
+
+  it("copies an arcade ZIP byte-for-byte and records the selected native core", async () => {
+    const fixture = await makeFixture();
+    const bytes = zipSync({ "1944.bin": new Uint8Array([1, 9, 4, 4]) });
+    const romSha1 = createHash("sha1").update(bytes).digest("hex");
+    const sourceRomPath = path.join(fixture.sourceDir, "1944.zip");
+    const sourceCoverPath = path.join(fixture.sourceDir, "1944.jpg");
+    writeFileSync(sourceRomPath, bytes);
+    writeFileSync(
+      sourceCoverPath,
+      await sharp({ create: { width: 8, height: 8, channels: 3, background: "#194" } }).jpeg().toBuffer(),
+    );
+    const item: ArchiveImportCandidate = {
+      id: `arcade:fbneo:${romSha1}`,
+      kind: "arcade",
+      sourceKey: "1944",
+      sourceRomPath,
+      sourceCoverPath,
+      archiveMember: null,
+      title: "1944",
+      originalTitle: "1944",
+      fileName: "1944.zip",
+      system: "arcade",
+      emulatorId: "fbneo",
+      size: bytes.byteLength,
+      romSha1,
+      classification: "new",
+    };
+
+    const report = await applyArchiveImport(plan([item], "arcade"), fixture.options);
+    const imported = listStoredGames(fixture.database)[0];
+
+    expect(report).toEqual(expect.objectContaining({ added: 1, skipped: 0 }));
+    expect(imported).toEqual(expect.objectContaining({
+      fileName: "1944.zip",
+      system: "arcade",
+      emulatorId: "fbneo",
+      romPath: path.join(fixture.dataDir, "roms", `${romSha1}.zip`),
+    }));
+    expect(readFileSync(imported.romPath)).toEqual(Buffer.from(bytes));
+  });
 });
 
 async function makeFixture() {
@@ -164,9 +205,9 @@ async function candidate(
   };
 }
 
-function plan(candidates: ArchiveImportCandidate[]): ArchiveImportPlan {
+function plan(candidates: ArchiveImportCandidate[], kind: ArchiveImportPlan["kind"] = "nes"): ArchiveImportPlan {
   return {
-    kind: "nes",
+    kind,
     archiveRoot: "/fixture",
     candidates,
     skipped: [],

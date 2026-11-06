@@ -4,7 +4,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { StoredGame } from "./game-types";
-import { editionSuffixFromRomName, planNesArchiveImport } from "./archive-catalog.server";
+import {
+  editionSuffixFromRomName,
+  mapArchiveArcadeCore,
+  planArcadeArchiveImport,
+  planNesArchiveImport,
+} from "./archive-catalog.server";
 
 const temporaryRoots: string[] = [];
 
@@ -123,6 +128,46 @@ describe("editionSuffixFromRomName", () => {
   });
 });
 
+describe("planArcadeArchiveImport", () => {
+  it("maps MAME and FBN rows to native EmulatorJS cores and preserves shortname ZIPs", async () => {
+    const root = arcadeArchiveFixture([
+      arcadeEntry("1", "1942", "1942", "mame"),
+      arcadeEntry("2", "1944", "1944", "fbn"),
+      arcadeEntry("3", "카발", "cabalbl", "mame", "cabal.jpg"),
+    ]);
+
+    const plan = await planArcadeArchiveImport({ archiveRoot: root, existingGames: [] });
+
+    expect(plan.counts).toEqual({ candidate: 3, new: 3, edition: 0, duplicate: 0, error: 0 });
+    expect(plan.candidates).toEqual([
+      expect.objectContaining({
+        id: expect.stringMatching(/^arcade:mame2003-plus:[0-9a-f]{40}$/),
+        sourceKey: "1942",
+        fileName: "1942.zip",
+        archiveMember: null,
+        system: "arcade",
+        emulatorId: "mame2003-plus",
+      }),
+      expect.objectContaining({
+        id: expect.stringMatching(/^arcade:fbneo:[0-9a-f]{40}$/),
+        sourceKey: "1944",
+        fileName: "1944.zip",
+        archiveMember: null,
+        system: "arcade",
+        emulatorId: "fbneo",
+      }),
+      expect.objectContaining({
+        sourceKey: "cabalbl",
+        sourceCoverPath: path.join(root, "assets", "screenshots_app", "cabal.jpg"),
+      }),
+    ]);
+  });
+
+  it("rejects unknown arcade core identifiers", () => {
+    expect(() => mapArchiveArcadeCore("mystery-core")).toThrow("unsupported arcade core: mystery-core");
+  });
+});
+
 interface FixtureEntry {
   no: string;
   title: string;
@@ -171,6 +216,60 @@ function archiveFixture(entries: FixtureEntry[]): string {
     name: item.title,
     zip: item.sourceKey,
     images: [`assets/screenshots_app/${item.sourceKey.toLowerCase()}.jpg`],
+  }));
+  writeFileSync(path.join(root, "assets", "game_details.json"), JSON.stringify(details));
+  writeFileSync(path.join(root, "assets", "game_image_mapping.json"), JSON.stringify(images));
+  return root;
+}
+
+interface ArcadeFixtureEntry {
+  no: string;
+  title: string;
+  sourceKey: string;
+  core: "mame" | "fbn";
+  imageName: string;
+}
+
+function arcadeEntry(
+  no: string,
+  title: string,
+  sourceKey: string,
+  core: "mame" | "fbn",
+  imageName = `${sourceKey}.jpg`,
+): ArcadeFixtureEntry {
+  return { no, title, sourceKey, core, imageName };
+}
+
+function arcadeArchiveFixture(entries: ArcadeFixtureEntry[]): string {
+  const root = mkdtempSync(path.join(tmpdir(), "nesbox-arcade-archive-"));
+  temporaryRoots.push(root);
+  mkdirSync(path.join(root, "assets", "screenshots_app"), { recursive: true });
+  mkdirSync(path.join(root, "games", "mame"), { recursive: true });
+  mkdirSync(path.join(root, "games", "fbn"), { recursive: true });
+
+  const details = entries.map((item, index) => {
+    const image = `assets/screenshots_app/${item.imageName}`;
+    writeFileSync(path.join(root, image), "fixture image");
+    writeFileSync(
+      path.join(root, "games", item.core, `${item.sourceKey}.zip`),
+      makeStoredZip({ [`${item.sourceKey}.bin`]: new Uint8Array([0x50, 0x4b, index + 1]) }),
+    );
+    return {
+      no: item.no,
+      name: item.title,
+      zip: item.sourceKey,
+      core: item.core,
+      download: {
+        file: `${item.sourceKey}.zip`,
+        image_files: [image],
+      },
+    };
+  });
+  const images = entries.map((item) => ({
+    no: item.no,
+    name: item.title,
+    zip: item.sourceKey,
+    images: [`assets/screenshots_app/${item.imageName}`],
   }));
   writeFileSync(path.join(root, "assets", "game_details.json"), JSON.stringify(details));
   writeFileSync(path.join(root, "assets", "game_image_mapping.json"), JSON.stringify(images));

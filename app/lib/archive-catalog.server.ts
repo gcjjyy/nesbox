@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { open, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { unzipSync } from "fflate";
 import variantRows from "../../scripts/archive-nes-variants.json";
@@ -68,6 +69,13 @@ interface ImageMappingRow {
 }
 
 const NES_VARIANTS = new Map(variantRows.map((row) => [row.sourceKey, row.title]));
+const ARCADE_CORES = new Set(["mame", "fbn"]);
+
+export function mapArchiveArcadeCore(core: string): EmulatorId {
+  if (core === "mame") return "mame2003-plus";
+  if (core === "fbn") return "fbneo";
+  throw new Error(`unsupported arcade core: ${core}`);
+}
 
 export async function planNesArchiveImport(options: {
   archiveRoot: string;
@@ -154,8 +162,84 @@ export async function planNesArchiveImport(options: {
   };
 }
 
+export async function planArcadeArchiveImport(options: {
+  archiveRoot: string;
+  existingGames: StoredGame[];
+}): Promise<ArchiveImportPlan> {
+  const archiveRoot = path.resolve(options.archiveRoot);
+  const details = await readJsonArray<GameDetailRow>(path.join(archiveRoot, "assets", "game_details.json"));
+  const mappings = await readJsonArray<ImageMappingRow>(path.join(archiveRoot, "assets", "game_image_mapping.json"));
+  const imageMappings = new Map(mappings.map((row) => [row.zip, row]));
+  const existingByCoreAndHash = await hashExistingArcadeGames(options.existingGames);
+  const plannedKeys = new Map<string, string>();
+  const candidates: ArchiveImportCandidate[] = [];
+  const skipped: ArchiveSkippedItem[] = [];
+
+  for (const row of details.filter((item) => ARCADE_CORES.has(item.core))) {
+    validateArcadeCatalogRow(row);
+    const emulatorId = mapArchiveArcadeCore(row.core);
+    const sourceKey = row.zip;
+    const mapping = imageMappings.get(sourceKey);
+    if (!mapping || mapping.no !== row.no) {
+      throw new Error(`${sourceKey}: missing matching image manifest row`);
+    }
+    const sourceCoverPath = await resolveCoverPath(archiveRoot, sourceKey, row, mapping);
+    const fileName = row.download!.file!;
+    const sourceRomPath = safeArchivePath(archiveRoot, path.join("games", row.core, fileName));
+    const size = await inspectArcadeZip(sourceRomPath, sourceKey);
+    const romSha1 = await sha1File(sourceRomPath);
+    const dedupeKey = `${emulatorId}:${romSha1}`;
+    const existing = existingByCoreAndHash.get(dedupeKey);
+    const earlierCandidate = plannedKeys.get(dedupeKey);
+    if (existing || earlierCandidate) {
+      skipped.push({
+        sourceKey,
+        title: row.name,
+        reason: "duplicate-rom",
+        existingGameId: existing?.id ?? earlierCandidate,
+      });
+      continue;
+    }
+
+    const id = `arcade:${emulatorId}:${romSha1}`;
+    candidates.push({
+      id,
+      kind: "arcade",
+      sourceKey,
+      sourceRomPath,
+      sourceCoverPath,
+      archiveMember: null,
+      title: row.name,
+      originalTitle: sourceKey,
+      fileName,
+      system: "arcade",
+      emulatorId,
+      size,
+      romSha1,
+      classification: "new",
+    });
+    plannedKeys.set(dedupeKey, id);
+  }
+
+  return {
+    kind: "arcade",
+    archiveRoot,
+    candidates,
+    skipped,
+    counts: {
+      candidate: candidates.length,
+      new: candidates.length,
+      edition: 0,
+      duplicate: skipped.length,
+      error: 0,
+    },
+  };
+}
+
 export async function sha1File(filePath: string): Promise<string> {
-  return sha1Bytes(await readFile(filePath));
+  const hash = createHash("sha1");
+  for await (const chunk of createReadStream(filePath)) hash.update(chunk);
+  return hash.digest("hex");
 }
 
 export function editionSuffixFromRomName(name: string): string {
@@ -170,9 +254,28 @@ async function hashExistingGames(games: StoredGame[]): Promise<Map<string, Store
   return new Map(entries);
 }
 
+async function hashExistingArcadeGames(games: StoredGame[]): Promise<Map<string, StoredGame>> {
+  const arcadeGames = games.filter((game) => game.system === "arcade");
+  const entries = await Promise.all(arcadeGames.map(async (game) => [
+    `${game.emulatorId}:${await sha1File(game.romPath)}`,
+    game,
+  ] as const));
+  return new Map(entries);
+}
+
 function validateCatalogRow(row: GameDetailRow): void {
   if (!row.no || !row.name || !row.zip || !row.download?.file) {
     throw new Error(`invalid NES catalog row: ${JSON.stringify(row)}`);
+  }
+}
+
+function validateArcadeCatalogRow(row: GameDetailRow): void {
+  if (!row.no || !row.name || !row.zip || !row.download?.file) {
+    throw new Error(`invalid arcade catalog row: ${JSON.stringify(row)}`);
+  }
+  mapArchiveArcadeCore(row.core);
+  if (path.basename(row.download.file) !== row.download.file || row.download.file !== `${row.zip}.zip`) {
+    throw new Error(`${row.zip}: arcade ROM filename must be ${row.zip}.zip`);
   }
 }
 
@@ -209,6 +312,24 @@ async function readRequiredFile(filePath: string, message: string): Promise<Uint
     return await readFile(filePath);
   } catch (error) {
     throw new Error(message, { cause: error });
+  }
+}
+
+async function inspectArcadeZip(filePath: string, sourceKey: string): Promise<number> {
+  try {
+    const info = await stat(filePath);
+    if (!info.isFile() || info.size < 4) throw new Error("not a ZIP file");
+    const handle = await open(filePath, "r");
+    try {
+      const signature = Buffer.alloc(4);
+      await handle.read(signature, 0, signature.length, 0);
+      if (signature[0] !== 0x50 || signature[1] !== 0x4b) throw new Error("invalid ZIP signature");
+    } finally {
+      await handle.close();
+    }
+    return info.size;
+  } catch (error) {
+    throw new Error(`${sourceKey}: invalid or missing arcade ZIP`, { cause: error });
   }
 }
 

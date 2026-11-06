@@ -22,7 +22,7 @@ export async function loader({ params }: Route.LoaderArgs) {
   const { getGame, listGames } = await import("../lib/library.server");
   const stored = getGame(params.gameId);
   if (!stored) throw new Response("not found", { status: 404 });
-  const { romPath: _romPath, ...game } = stored;
+  const { romPath: _romPath, coverPath: _coverPath, ...game } = stored;
   return { game, games: listGames() };
 }
 

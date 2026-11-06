@@ -2,7 +2,12 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import Database from "better-sqlite3";
-import { planNesArchiveImport, type ArchiveImportKind, type ArchiveImportPlan } from "../app/lib/archive-catalog.server";
+import {
+  planArcadeArchiveImport,
+  planNesArchiveImport,
+  type ArchiveImportKind,
+  type ArchiveImportPlan,
+} from "../app/lib/archive-catalog.server";
 import { applyArchiveImport, type ArchiveApplyReport } from "../app/lib/archive-import.server";
 import type { StoredGame } from "../app/lib/game-types";
 import { initializeLibraryDb, listStoredGames } from "../app/lib/library.server";
@@ -63,10 +68,10 @@ export function parseArchiveImportArgs(argv: string[]): ArchiveImportArgs {
 }
 
 export async function runArchiveImport(args: ArchiveImportArgs): Promise<ArchiveImportPlan> {
-  if (args.kind !== "nes") throw new Error("arcade planning is not available yet");
   const dbPath = path.join(args.dataDir, "nesbox.sqlite");
+  const planImport = args.kind === "nes" ? planNesArchiveImport : planArcadeArchiveImport;
   if (!args.apply) {
-    return planNesArchiveImport({
+    return planImport({
       archiveRoot: args.archiveRoot,
       existingGames: readStoredGamesReadonly(dbPath),
     });
@@ -75,7 +80,7 @@ export async function runArchiveImport(args: ArchiveImportArgs): Promise<Archive
   const database = new Database(dbPath);
   try {
     initializeLibraryDb(database);
-    const plan = await planNesArchiveImport({ archiveRoot: args.archiveRoot, existingGames: listStoredGames(database) });
+    const plan = await planImport({ archiveRoot: args.archiveRoot, existingGames: listStoredGames(database) });
     const applyReport = await applyArchiveImport(plan, { dataDir: args.dataDir, database, dbPath });
     return Object.assign(plan, { applyReport });
   } finally {

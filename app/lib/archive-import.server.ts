@@ -1,5 +1,5 @@
 import { existsSync, renameSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { unzipSync } from "fflate";
@@ -101,19 +101,26 @@ async function stageCandidate(
   romDir: string,
   coverDir: string,
 ): Promise<StagedCandidate> {
-  if (candidate.kind !== "nes" || !candidate.archiveMember) {
+  const extension = candidate.kind === "arcade" ? "zip" : "nes";
+  const stagedRomPath = path.join(stagingRoot, `${candidate.romSha1}.${extension}`);
+  const stagedCoverPath = path.join(stagingRoot, `${candidate.romSha1}.webp`);
+  const finalRomPath = path.join(romDir, `${candidate.romSha1}.${extension}`);
+  const finalCoverPath = path.join(coverDir, `${candidate.romSha1}.webp`);
+  if (candidate.kind === "nes" && candidate.archiveMember) {
+    const entries = unzipSync(await readFile(candidate.sourceRomPath));
+    const romBytes = entries[candidate.archiveMember];
+    if (!romBytes) throw new Error(`${candidate.sourceKey}: ROM member disappeared from archive`);
+    if (romBytes.byteLength !== candidate.size) throw new Error(`${candidate.sourceKey}: ROM size changed after planning`);
+    await writeFile(stagedRomPath, romBytes);
+  } else if (candidate.kind === "arcade" && candidate.archiveMember === null) {
+    const sourceInfo = await stat(candidate.sourceRomPath);
+    if (!sourceInfo.isFile() || sourceInfo.size !== candidate.size) {
+      throw new Error(`${candidate.sourceKey}: ROM size changed after planning`);
+    }
+    await copyFile(candidate.sourceRomPath, stagedRomPath);
+  } else {
     throw new Error(`${candidate.sourceKey}: unsupported archive candidate`);
   }
-  const entries = unzipSync(await readFile(candidate.sourceRomPath));
-  const romBytes = entries[candidate.archiveMember];
-  if (!romBytes) throw new Error(`${candidate.sourceKey}: ROM member disappeared from archive`);
-  if (romBytes.byteLength !== candidate.size) throw new Error(`${candidate.sourceKey}: ROM size changed after planning`);
-
-  const stagedRomPath = path.join(stagingRoot, `${candidate.romSha1}.nes`);
-  const stagedCoverPath = path.join(stagingRoot, `${candidate.romSha1}.webp`);
-  const finalRomPath = path.join(romDir, `${candidate.romSha1}.nes`);
-  const finalCoverPath = path.join(coverDir, `${candidate.romSha1}.webp`);
-  await writeFile(stagedRomPath, romBytes);
   if (await sha1File(stagedRomPath) !== candidate.romSha1) {
     throw new Error(`${candidate.sourceKey}: staged ROM hash mismatch`);
   }
