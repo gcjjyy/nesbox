@@ -2,7 +2,7 @@
   "name": "nesbox",
   "version": "0.1.1",
   "private": true,
-  "license": "GPL-2.0",
+  "license": "GPL-3.0-only",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -11,12 +11,18 @@
     "build": "react-router build",
     "dev": "react-router dev",
     "import:archive": "tsx scripts/import-archive.ts",
+    "prebuild": "npm run prepare:emulatorjs",
+    "predev": "npm run prepare:emulatorjs",
+    "prepare:emulatorjs": "tsx scripts/copy-emulatorjs-assets.ts",
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@emulatorjs/core-fbneo": "4.2.3",
+    "@emulatorjs/core-mame2003_plus": "4.2.3",
+    "@emulatorjs/emulatorjs": "4.2.3",
     "@react-router/node": "7.16.0",
     "@react-router/serve": "7.16.0",
     "better-sqlite3": "^12.10.0",

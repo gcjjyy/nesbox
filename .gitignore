@@ -5,6 +5,7 @@ build/
 
 .env
 data/
+public/emulatorjs/data/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal

@@ -3,6 +3,8 @@ import { extensionOf, type EmulatorId, type SystemId } from "./rom";
 export interface EmulatorProfile {
   id: EmulatorId;
   system: SystemId;
+  runtime: "script" | "emulatorjs";
+  coreName?: string;
   name: string;
   shortName: string;
   scriptUrl: string;
@@ -19,6 +21,7 @@ export const EMULATOR_PROFILES: EmulatorProfile[] = [
   {
     id: "nestopia",
     system: "nes",
+    runtime: "script",
     name: "Nestopia UE libretro",
     shortName: "Nestopia",
     scriptUrl: "/cores/nesbox_nes.js",
@@ -33,6 +36,7 @@ export const EMULATOR_PROFILES: EmulatorProfile[] = [
   {
     id: "fceux",
     system: "nes",
+    runtime: "script",
     name: "FCEUX Emscripten",
     shortName: "FCEUX",
     scriptUrl: "/cores/nesbox_fceux.js",
@@ -47,6 +51,7 @@ export const EMULATOR_PROFILES: EmulatorProfile[] = [
   {
     id: "snes9x",
     system: "snes",
+    runtime: "script",
     name: "Snes9x libretro",
     shortName: "Snes9x",
     scriptUrl: "/cores/nesbox_snes.js",
@@ -57,6 +62,38 @@ export const EMULATOR_PROFILES: EmulatorProfile[] = [
     extensions: ["sfc", "smc", "fig", "swc"],
     defaultForExtensions: ["sfc", "smc", "fig", "swc"],
     status: "planned",
+  },
+  {
+    id: "mame2003-plus",
+    system: "arcade",
+    runtime: "emulatorjs",
+    coreName: "mame2003_plus",
+    name: "MAME 2003-Plus libretro",
+    shortName: "MAME 2003-Plus",
+    scriptUrl: "/emulatorjs/data/loader.js",
+    wasmUrl: "/emulatorjs/data/cores/mame2003_plus-wasm.data",
+    factoryName: "createNesboxMame2003PlusCore",
+    sourceUrl: "https://github.com/libretro/mame2003-plus-libretro",
+    license: "MAME non-commercial license",
+    extensions: ["zip"],
+    defaultForExtensions: [],
+    status: "active",
+  },
+  {
+    id: "fbneo",
+    system: "arcade",
+    runtime: "emulatorjs",
+    coreName: "fbneo",
+    name: "FinalBurn Neo libretro",
+    shortName: "FBNeo",
+    scriptUrl: "/emulatorjs/data/loader.js",
+    wasmUrl: "/emulatorjs/data/cores/fbneo-wasm.data",
+    factoryName: "createNesboxFbneoCore",
+    sourceUrl: "https://github.com/finalburnneo/FBNeo",
+    license: "FBNeo non-commercial license",
+    extensions: ["zip"],
+    defaultForExtensions: [],
+    status: "active",
   },
 ];
 
@@ -71,11 +108,10 @@ export function emulatorsForExtension(fileName: string): EmulatorProfile[] {
 
 export function defaultEmulatorForFile(fileName: string): EmulatorProfile | null {
   const ext = extensionOf(fileName);
-  return (
-    EMULATOR_PROFILES.find((profile) => profile.defaultForExtensions.includes(ext)) ??
-    emulatorsForExtension(fileName)[0] ??
-    null
-  );
+  const configured = EMULATOR_PROFILES.find((profile) => profile.defaultForExtensions.includes(ext));
+  if (configured) return configured;
+  const compatible = emulatorsForExtension(fileName);
+  return compatible.length === 1 ? compatible[0] : null;
 }
 
 export function systemForEmulator(id: EmulatorId): SystemId | null {
