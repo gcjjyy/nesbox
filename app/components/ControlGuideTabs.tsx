@@ -74,10 +74,7 @@ export function ControlGuideTabs({
           aria-labelledby={`${id}-${profile.id}-tab`}
           className="control-guide-tabs__panel"
         >
-          {renderPanel ? renderPanel(profile.id) : <>
-            <KeyboardLayoutPreview profile={profile.id} bindings={bindings} />
-            {profile.id === "mame" && <p>Coin과 Start, 6개 액션 버튼을 지원합니다.</p>}
-          </>}
+          {renderPanel ? renderPanel(profile.id) : <KeyboardLayoutPreview profile={profile.id} bindings={bindings} />}
         </div>
       ))}
     </div>
