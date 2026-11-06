@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectSystemFromName, extensionOf, formatBytes, makeRomId } from "./rom";
+import { detectSystemFromName, displaySystem, extensionOf, formatBytes, makeRomId } from "./rom";
 
 describe("rom helpers", () => {
   it("detects supported systems from filename", () => {
@@ -21,5 +21,9 @@ describe("rom helpers", () => {
   it("formats byte counts", () => {
     expect(formatBytes(42)).toBe("42 B");
     expect(formatBytes(1536)).toBe("1.5 KB");
+  });
+
+  it("labels the shared arcade system as MAME", () => {
+    expect(displaySystem("arcade")).toBe("MAME / Arcade");
   });
 });

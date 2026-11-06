@@ -1020,6 +1020,12 @@ button {
   --screen-height: 224;
 }
 
+.emulator-stage--system-arcade {
+  --screen-aspect: 4 / 3;
+  --screen-width: 320;
+  --screen-height: 240;
+}
+
 .screen-slot {
   display: grid;
   /* 칸 크기가 캔버스 크기를 따라 늘어나지 않도록 고정한다 */
@@ -1089,6 +1095,80 @@ button {
   height: auto;
   max-width: 100%;
   max-height: 100%;
+}
+
+.emulatorjs-host {
+  position: absolute;
+  inset: 0;
+  display: none;
+  width: 100%;
+  height: 100%;
+  background: #030404;
+}
+
+.emulator-stage--system-arcade .game-canvas {
+  display: none;
+}
+
+.emulator-stage--system-arcade .emulatorjs-host {
+  display: block;
+}
+
+.emulatorjs-host .ejs_parent,
+.emulatorjs-host .ejs_game,
+.emulatorjs-host .ejs_canvas_parent,
+.emulatorjs-host .ejs_canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.emulatorjs-host .ejs_canvas {
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.emulatorjs-host .ejs_menu_bar,
+.emulatorjs-host .ejs_context_menu,
+.emulatorjs-host .ejs_virtualGamepad_parent,
+.emulatorjs-host .ejs_virtualGamepad_open {
+  display: none !important;
+}
+
+.arcade-start-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px;
+  color: var(--text);
+  text-align: center;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 4px),
+    rgba(7, 9, 9, 0.94);
+}
+
+.arcade-start-overlay span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.arcade-start-button {
+  min-width: 150px;
+  border: 1px solid color-mix(in srgb, var(--red) 65%, #fff 10%);
+  border-radius: 999px;
+  padding: 12px 22px;
+  color: #f5f7f2;
+  background: var(--red);
+  font: 700 15px var(--font-mono);
+  cursor: pointer;
+}
+
+.arcade-start-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .stage-empty {

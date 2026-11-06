@@ -3,7 +3,7 @@ import { Volume2 } from "lucide-react";
 import type { NesboxButton, NesboxCore, EmulatorPhase } from "../lib/core-contract";
 import { recoverAudioCore } from "../lib/audio-core-recovery";
 import { AudioContextPreparationError, createCore, drawCoreMissing, makeUnavailableCore } from "../lib/core-loader";
-import { loadAssignedCore } from "../lib/core-load-finalizer";
+import { loadAssignedCore, type AssignedCoreStartResult } from "../lib/core-load-finalizer";
 import { emulatorById } from "../lib/emulator-registry";
 import type { GameEntry } from "../lib/game-types";
 import { fetchRomBytes } from "../lib/library-client";
@@ -51,9 +51,10 @@ const GAMEPAD_AXIS_THRESHOLD = 0.45;
 
 // em-fceux는 위아래 오버스캔을 뺀 224줄을 8:7 픽셀 비율로 출력한다(292x224).
 // 화면 틀을 처음부터 이 비율로 잡아야 코어가 맞춘 캔버스와 틀이 어긋나지 않는다.
-const SCREEN_SIZES: Record<"nes" | "snes", { width: number; height: number }> = {
+const SCREEN_SIZES: Record<"nes" | "snes" | "arcade", { width: number; height: number }> = {
   nes: { width: 292, height: 224 },
   snes: { width: 256, height: 224 },
+  arcade: { width: 320, height: 240 },
 };
 
 type GameLoadResult = boolean | "stale";
@@ -69,12 +70,15 @@ interface AudioUnlockAttempt {
 }
 
 function screenSizeForSystem(system: SystemId) {
-  return system === "snes" ? SCREEN_SIZES.snes : SCREEN_SIZES.nes;
+  if (system === "snes") return SCREEN_SIZES.snes;
+  if (system === "arcade") return SCREEN_SIZES.arcade;
+  return SCREEN_SIZES.nes;
 }
 
 export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChange, onSavedStateChange, ref }: EmulatorStageProps) {
   const shellRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const emulatorJsHostRef = useRef<HTMLDivElement | null>(null);
   const coreRef = useRef<NesboxCore | null>(null);
   const disposedCoresRef = useRef(new WeakSet<NesboxCore>());
   const gameRef = useRef<GameEntry | null>(null);
@@ -84,14 +88,21 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   const audioRecoveryRef = useRef<PendingAudioRecovery | null>(null);
   const audioUnlockAttemptRef = useRef<AudioUnlockAttempt | null>(null);
   const gamepadButtonsRef = useRef(new Set<NesboxButton>());
+  const fetchAbortRef = useRef<AbortController | null>(null);
+  const readyStartRef = useRef<{
+    seq: number;
+    start: () => Promise<AssignedCoreStartResult>;
+  } | null>(null);
   const [phase, setPhase] = useState<EmulatorPhase>("idle");
   const [audioUnlocking, setAudioUnlocking] = useState(false);
+  const [startingArcade, setStartingArcade] = useState(false);
+  const [romProgress, setRomProgress] = useState<string | null>(null);
   const [screenSystem, setScreenSystem] = useState<SystemId>("nes");
   const [screenPixels, setScreenPixels] = useState(screenSizeForSystem("nes"));
   const [touchSurface, setTouchSurface] = useState(false);
   const [hasSavedState, setHasSavedState] = useState(false);
   const audioState = useAudioSessionState();
-  const audioPromptVisible = audioPromptRequired(phase === "running", audioState);
+  const audioPromptVisible = screenSystem !== "arcade" && audioPromptRequired(phase === "running", audioState);
 
   useImperativeHandle(ref, () => ({
     openGame,
@@ -195,17 +206,25 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const emulatorJsHost = emulatorJsHostRef.current;
+    if (!canvas || !emulatorJsHost) return;
 
     let raf = 0;
     let stopped = false;
 
-    const update = () => syncScreenPixelsFromCanvas(canvas);
+    const update = () => syncScreenPixelsFromActiveCanvas();
     const observer = new MutationObserver(update);
     observer.observe(canvas, { attributes: true, attributeFilter: ["height", "style", "width"] });
+    observer.observe(emulatorJsHost, {
+      attributes: true,
+      attributeFilter: ["data-nesbox-video-height", "data-nesbox-video-width", "height", "style", "width"],
+      childList: true,
+      subtree: true,
+    });
 
     const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
     resizeObserver?.observe(canvas);
+    resizeObserver?.observe(emulatorJsHost);
 
     const startedAt = performance.now();
     const tick = () => {
@@ -230,10 +249,15 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   }
 
   function disposeCore(updateUi = true) {
+    fetchAbortRef.current?.abort();
+    fetchAbortRef.current = null;
+    readyStartRef.current = null;
     const core = coreRef.current;
     coreRef.current = null;
     gameRef.current = null;
     setAudioUnlocking(false);
+    setStartingArcade(false);
+    setRomProgress(null);
     if (core) disposeOwnedCore(core);
     if (!updateUi) return;
     setScreenSystem("nes");
@@ -255,6 +279,23 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     setScreenPixels((prev) => (prev.width === next.width && prev.height === next.height ? prev : next));
   }
 
+  function syncScreenPixelsFromActiveCanvas() {
+    if (gameRef.current?.system === "arcade") {
+      const host = emulatorJsHostRef.current;
+      if (!host) return;
+      const width = Number(host.dataset.nesboxVideoWidth);
+      const height = Number(host.dataset.nesboxVideoHeight);
+      const aspect = width / height;
+      // EmulatorJS stretches its canvas to the host, so the bridge exposes the core's own
+      // framebuffer dimensions. Feeding CSS canvas sizes back here causes a resize loop.
+      if (width > 0 && height > 0 && aspect >= 0.5 && aspect <= 2.5) {
+        setScreenPixels((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
+      }
+      return;
+    }
+    if (canvasRef.current) syncScreenPixelsFromCanvas(canvasRef.current);
+  }
+
   function isStaleLoad(seq: number) {
     return disposedRef.current || seq !== loadSeqRef.current;
   }
@@ -272,12 +313,14 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
 
   async function loadGame(game: GameEntry): Promise<GameLoadResult> {
     const canvas = canvasRef.current;
-    if (!canvas) return "stale";
+    const hostElement = emulatorJsHostRef.current;
+    if (!canvas || !hostElement) return "stale";
     disposedRef.current = false;
     audioRecoveryRef.current = null;
     const seq = loadSeqRef.current + 1;
     loadSeqRef.current = seq;
     setPhase("loading-core");
+    setRomProgress(null);
     onRunningChange(false);
     onStatus(`${game.title} 로딩 중`);
     disposeCore();
@@ -301,7 +344,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     let realCore = true;
     let audioPreparationFailed = false;
     try {
-      core = await createCore(game.emulatorId, canvas);
+      core = await createCore(game.emulatorId, { canvas, hostElement });
       if (isStaleLoad(seq)) {
         disposeOwnedCore(core);
         return "stale";
@@ -324,6 +367,8 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     }
 
     coreRef.current = core;
+    const abortController = new AbortController();
+    fetchAbortRef.current = abortController;
     const disposeLoadCore = () => {
       const wasCurrent = coreRef.current === core;
       if (wasCurrent && gameRef.current?.id === game.id) gameRef.current = null;
@@ -331,15 +376,29 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     };
     const finalization = await loadAssignedCore({
       prepare: () => core.setVolume(settings.volume),
-      fetchRom: () => fetchRomBytes(game.id),
+      fetchRom: () => fetchRomBytes(game.id, (loaded, total) => {
+        if (isStaleLoad(seq)) return;
+        const progress = total && total > 0
+          ? `${Math.min(100, Math.round((loaded / total) * 100))}%`
+          : `${(loaded / 1024 / 1024).toFixed(1)} MB`;
+        setRomProgress(progress);
+        onStatus(`${game.title} ROM 불러오는 중 · ${progress}`);
+      }, abortController.signal),
       loadRom: (romBytes) => core.loadRom(romBytes, game.fileName),
       isCurrent: () => !isStaleLoad(seq) && coreRef.current === core,
       dispose: disposeLoadCore,
       start: () => core.start(),
+      autoStart: profile.runtime !== "emulatorjs",
       onRomLoaded: () => {
-        if (canvasRef.current) syncScreenPixelsFromCanvas(canvasRef.current);
+        setRomProgress(null);
+        if (profile.runtime !== "emulatorjs" && canvasRef.current) {
+          syncScreenPixelsFromCanvas(canvasRef.current);
+        }
       },
       onStarted: () => {
+        readyStartRef.current = null;
+        setStartingArcade(false);
+        syncScreenPixelsFromActiveCanvas();
         setPhase("running");
         onRunningChange(true);
         if (audioPreparationFailed) {
@@ -351,20 +410,43 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
         }
       },
       onFailure: (error) => {
+        readyStartRef.current = null;
         audioRecoveryRef.current = null;
         setPhase("error");
         onRunningChange(false);
         onStatus(statusFromError(error));
       },
     });
+    if (fetchAbortRef.current === abortController) fetchAbortRef.current = null;
     if (finalization.kind === "stale") return "stale";
     if (finalization.kind === "failed") return false;
+    if (finalization.kind === "ready") {
+      readyStartRef.current = { seq, start: finalization.start };
+      setPhase("ready");
+      onStatus("ROM 준비 완료 · 게임 시작을 눌러주세요.");
+    }
     return realCore;
+  }
+
+  async function startReadyGame(): Promise<boolean> {
+    const pending = readyStartRef.current;
+    if (!pending || pending.seq !== loadSeqRef.current || startingArcade) return false;
+    setStartingArcade(true);
+    onStatus("아케이드 코어 시작 중");
+    const result = await pending.start();
+    if (result.kind !== "started" && pending === readyStartRef.current) {
+      setStartingArcade(false);
+    }
+    return result.kind === "started";
   }
 
   function toggleRun() {
     const core = coreRef.current;
     if (!core) return;
+    if (phase === "ready") {
+      void startReadyGame();
+      return;
+    }
     if (phase === "running") {
       core.pause();
       setPhase("paused");
@@ -411,9 +493,11 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
       onStatus("이 브라우저에 저장된 상태가 없습니다.");
       return;
     }
+    const startedFromReady = phase === "ready";
+    if (startedFromReady && !await startReadyGame()) return;
     await core.loadState(bytes);
     if (coreRef.current !== core) return;
-    if (phase !== "running") {
+    if (phase !== "running" && !startedFromReady) {
       if (phase === "paused") core.resume();
       else await core.start();
       setPhase("running");
@@ -510,10 +594,30 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
         <div className="screen-bezel">
           <div className="screen-viewport">
             <canvas ref={canvasRef} className="game-canvas" width={screenSize.width} height={screenSize.height} />
+            <div ref={emulatorJsHostRef} className="emulatorjs-host" aria-label="아케이드 게임 화면" />
             {phase === "idle" && (
               <div className="stage-empty">
                 <strong>Load ROM</strong>
-                <span>NES 또는 SNES 파일을 브라우저에서 직접 실행합니다.</span>
+                <span>NES 또는 아케이드 게임을 브라우저에서 직접 실행합니다.</span>
+              </div>
+            )}
+            {screenSystem === "arcade" && phase === "loading-core" && (
+              <div className="arcade-start-overlay" aria-live="polite">
+                <strong>ROM 준비 중</strong>
+                <span>{romProgress ?? "코어를 확인하고 있습니다."}</span>
+              </div>
+            )}
+            {screenSystem === "arcade" && phase === "ready" && (
+              <div className="arcade-start-overlay">
+                <button
+                  type="button"
+                  className="arcade-start-button"
+                  onClick={() => void startReadyGame()}
+                  disabled={startingArcade}
+                >
+                  {startingArcade ? "시작 중…" : "게임 시작"}
+                </button>
+                <span>클릭하면 아케이드 코어와 오디오를 시작합니다.</span>
               </div>
             )}
           </div>

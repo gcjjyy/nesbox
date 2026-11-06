@@ -21,10 +21,22 @@ export async function copyEmulatorJsAssets(options: {
       fileName: `${coreName}-${variant}.data`,
     })),
   );
+  const reportSources = CORE_PACKAGES.map(({ packageName, coreName }) => ({
+    source: path.join(
+      projectRoot,
+      "node_modules",
+      "@emulatorjs",
+      packageName,
+      "reports",
+      `${coreName}.json`,
+    ),
+    fileName: `${coreName}.json`,
+  }));
 
   await requirePath(path.join(runtimeSource, "loader.js"));
   await requirePath(path.join(runtimeSource, "emulator.css"));
   for (const item of coreSources) await requirePath(item.source);
+  for (const item of reportSources) await requirePath(item.source);
 
   await mkdir(path.dirname(destination), { recursive: true });
   const nonce = `${process.pid}-${Date.now()}`;
@@ -37,6 +49,9 @@ export async function copyEmulatorJsAssets(options: {
     const coresDirectory = path.join(staging, "cores");
     await mkdir(coresDirectory, { recursive: true });
     for (const item of coreSources) await cp(item.source, path.join(coresDirectory, item.fileName));
+    const reportsDirectory = path.join(coresDirectory, "reports");
+    await mkdir(reportsDirectory, { recursive: true });
+    for (const item of reportSources) await cp(item.source, path.join(reportsDirectory, item.fileName));
 
     if (await pathExists(destination)) {
       await rename(destination, previous);

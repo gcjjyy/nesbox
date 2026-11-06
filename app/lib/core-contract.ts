@@ -39,6 +39,11 @@ export interface CoreRuntimeOptions {
   onLog?: (line: string) => void;
 }
 
+export interface CoreMountTargets {
+  canvas: HTMLCanvasElement;
+  hostElement: HTMLElement;
+}
+
 export interface NesboxCore {
   metadata: CoreMetadata;
   loadRom: (rom: Uint8Array, name: string) => Promise<void>;

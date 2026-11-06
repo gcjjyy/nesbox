@@ -29,6 +29,8 @@ describe("copyEmulatorJsAssets", () => {
       for (const variant of ["wasm", "legacy-wasm", "thread-wasm", "thread-legacy-wasm"]) {
         expect(existsSync(path.join(destination, "cores", `${core}-${variant}.data`))).toBe(true);
       }
+      expect(readFileSync(path.join(destination, "cores", "reports", `${core}.json`), "utf8"))
+        .toBe(`{"core":"${core}"}`);
     }
   });
 
@@ -60,6 +62,7 @@ function fixtureProject(): string {
     for (const variant of ["wasm", "legacy-wasm", "thread-wasm", "thread-legacy-wasm"]) {
       write(packageRoot, `${core}-${variant}.data`, `${core}-${variant}`);
     }
+    write(packageRoot, `reports/${core}.json`, `{"core":"${core}"}`);
   }
   return root;
 }

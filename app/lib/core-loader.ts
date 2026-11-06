@@ -1,5 +1,6 @@
-import type { CoreMetadata, NesboxButton, NesboxCore, NesboxCoreFactory } from "./core-contract";
+import type { CoreMetadata, CoreMountTargets, NesboxButton, NesboxCore, NesboxCoreFactory } from "./core-contract";
 import { audioSession } from "./audio-session";
+import { createEmulatorJsCore } from "./emulatorjs-core";
 import { emulatorById, EMULATOR_PROFILES, type EmulatorProfile } from "./emulator-registry";
 import type { EmulatorId } from "./rom";
 
@@ -14,8 +15,11 @@ export class AudioContextPreparationError extends Error {
 
 const loadedScripts = new Map<string, Promise<void>>();
 
-export async function createCore(emulatorId: EmulatorId, canvas: HTMLCanvasElement): Promise<NesboxCore> {
+export async function createCore(emulatorId: EmulatorId, targets: CoreMountTargets): Promise<NesboxCore> {
   const target = requiredProfile(emulatorId);
+  if (target.runtime === "emulatorjs") {
+    return createEmulatorJsCore(target, targets.hostElement);
+  }
   await loadScript(target.scriptUrl);
   const factory = window[target.factoryName as keyof Window] as NesboxCoreFactory | undefined;
   if (!factory) {
@@ -28,7 +32,7 @@ export async function createCore(emulatorId: EmulatorId, canvas: HTMLCanvasEleme
     throw new AudioContextPreparationError(error);
   }
   return factory({
-    canvas,
+    canvas: targets.canvas,
     wasmUrl: target.wasmUrl,
     audioContext,
     onLog: (line) => console.debug(`[${emulatorId}] ${line}`),

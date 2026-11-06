@@ -4,6 +4,9 @@ import { audioSession } from "./audio-session";
 import type { NesboxCore, NesboxCoreFactory } from "./core-contract";
 import { AudioContextPreparationError, createCore } from "./core-loader";
 
+const { createEmulatorJsCore } = vi.hoisted(() => ({ createEmulatorJsCore: vi.fn() }));
+vi.mock("./emulatorjs-core", () => ({ createEmulatorJsCore }));
+
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
   const promise = new Promise<T>((resolvePromise) => {
@@ -34,7 +37,10 @@ describe("createCore", () => {
     });
     vi.spyOn(audioSession, "getContext").mockReturnValue(preparation.promise);
 
-    const corePromise = createCore("fceux", {} as HTMLCanvasElement);
+    const corePromise = createCore("fceux", {
+      canvas: {} as HTMLCanvasElement,
+      hostElement: {} as HTMLElement,
+    });
     await vi.waitFor(() => expect(audioSession.getContext).toHaveBeenCalledTimes(1));
     expect(factory).not.toHaveBeenCalled();
 
@@ -63,7 +69,10 @@ describe("createCore", () => {
       .mockRejectedValueOnce(preparationError)
       .mockResolvedValueOnce(recoveredContext);
 
-    await expect(createCore("fceux", {} as HTMLCanvasElement)).rejects.toBeInstanceOf(
+    await expect(createCore("fceux", {
+      canvas: {} as HTMLCanvasElement,
+      hostElement: {} as HTMLElement,
+    })).rejects.toBeInstanceOf(
       AudioContextPreparationError,
     );
     expect(factory).not.toHaveBeenCalled();
@@ -73,7 +82,10 @@ describe("createCore", () => {
       isCurrent: () => true,
       reload: async () => {
         activeCore.dispose();
-        activeCore = await createCore("fceux", {} as HTMLCanvasElement);
+        activeCore = await createCore("fceux", {
+          canvas: {} as HTMLCanvasElement,
+          hostElement: {} as HTMLElement,
+        });
         return true;
       },
     });
@@ -82,5 +94,21 @@ describe("createCore", () => {
     expect(placeholder.dispose).toHaveBeenCalledTimes(1);
     expect(activeCore).toBe(realCore);
     expect(factory).toHaveBeenCalledWith(expect.objectContaining({ audioContext: recoveredContext }));
+  });
+
+  it("routes an arcade profile to EmulatorJS without preparing shared audio", async () => {
+    const core = {} as NesboxCore;
+    const hostElement = {} as HTMLElement;
+    const canvas = {} as HTMLCanvasElement;
+    createEmulatorJsCore.mockResolvedValueOnce(core);
+    vi.spyOn(audioSession, "getContext");
+
+    await expect(createCore("fbneo", { canvas, hostElement })).resolves.toBe(core);
+
+    expect(audioSession.getContext).not.toHaveBeenCalled();
+    expect(createEmulatorJsCore).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "fbneo", coreName: "fbneo" }),
+      hostElement,
+    );
   });
 });

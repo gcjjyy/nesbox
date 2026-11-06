@@ -28,7 +28,9 @@ export function detectSystemFromName(name: string): SystemId | null {
 }
 
 export function displaySystem(system: SystemId): string {
-  return system === "nes" ? "NES / Famicom" : "SNES / Super Famicom";
+  if (system === "nes") return "NES / Famicom";
+  if (system === "arcade") return "MAME / Arcade";
+  return "SNES / Super Famicom";
 }
 
 export function makeRomId(system: SystemId, emulatorId: EmulatorId, name: string, bytes: Uint8Array): string {

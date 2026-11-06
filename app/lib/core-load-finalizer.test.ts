@@ -82,6 +82,44 @@ async function expectCurrentFailure(
 }
 
 describe("loadAssignedCore", () => {
+  it("returns a ready start action without auto-starting", async () => {
+    const load = makeLoad({ autoStart: false });
+
+    const result = await load.loading;
+
+    expect(result.kind).toBe("ready");
+    expect(load.core.start).not.toHaveBeenCalled();
+    expect(load.statuses).toEqual(["rom-loaded"]);
+    if (result.kind !== "ready") throw new Error("expected ready result");
+    await expect(result.start()).resolves.toEqual({ kind: "started" });
+    expect(load.core.start).toHaveBeenCalledTimes(1);
+    expect(load.statuses).toEqual(["rom-loaded", "started"]);
+  });
+
+  it("disposes a ready core made stale before the user starts it", async () => {
+    const load = makeLoad({ autoStart: false });
+    const result = await load.loading;
+    if (result.kind !== "ready") throw new Error("expected ready result");
+
+    load.invalidate();
+
+    await expect(result.start()).resolves.toEqual({ kind: "stale" });
+    expect(load.core.start).not.toHaveBeenCalled();
+    expect(load.core.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("surfaces a rejected user start through the failure policy", async () => {
+    const error = new Error("gesture start failed");
+    const start = vi.fn(async () => { throw error; });
+    const load = makeLoad({ autoStart: false, start });
+    const result = await load.loading;
+    if (result.kind !== "ready") throw new Error("expected ready result");
+
+    await expect(result.start()).resolves.toEqual({ kind: "failed", error });
+    expect(load.core.dispose).toHaveBeenCalledTimes(1);
+    expect(load.statuses).toEqual(["rom-loaded", error.message]);
+  });
+
   it("does not resurrect an old core when a new game loads while the ROM is loading", async () => {
     const romLoad = deferred<void>();
     const loadRom = vi.fn(() => romLoad.promise);
