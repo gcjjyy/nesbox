@@ -1,4 +1,5 @@
 import { ArcadeCabinet } from "./ArcadeCabinet";
+import { prepareArcadeAudio } from "../lib/arcade-audio";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Check, ChevronDown, Clock, Gamepad2, LayoutGrid, Play, Search } from "lucide-react";
 import {
@@ -188,7 +189,10 @@ export function GameCard({ game, playedAt, onLaunch }: { game: GameEntry; played
       type="button"
       className={`cart${isArcade ? " cart--arcade" : ""}`}
       style={{ "--shell": shellColorFor(game.id) } as CSSProperties}
-      onClick={() => onLaunch(game.id)}
+      onClick={() => {
+        if (game.system === "arcade") prepareArcadeAudio();
+        onLaunch(game.id);
+      }}
       aria-label={`${labels.primary} 실행`}
     >
       <span className="cart__shape" aria-hidden>

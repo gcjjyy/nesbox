@@ -6,8 +6,10 @@ export interface GameLoadProgress {
 
 const RUNTIME_LABELS: Record<string, string> = {
   "Loading...": "게임 준비 중",
+  "Load Game Core": "게임 코어 준비 중",
   "Download Game Core": "게임 코어 다운로드",
   "Decompress Game Core": "게임 코어 압축 해제",
+  "Load Cached Game Core": "저장된 게임 코어 불러오는 중",
   "Download Game Data": "게임 데이터 준비 중",
   "Decompress Game Data": "게임 데이터 압축 해제",
   "Download Game BIOS": "게임 BIOS 준비 중",

@@ -1,6 +1,7 @@
 import { cp, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { patchEmulatorJsCoreCache } from "./emulatorjs-core-cache";
 
 const CORE_PACKAGES = [
   { packageName: "core-mame2003_plus", coreName: "mame2003_plus" },
@@ -47,6 +48,8 @@ export async function copyEmulatorJsAssets(options: {
     await rm(staging, { recursive: true, force: true });
     await cp(runtimeSource, staging, { recursive: true });
     await patchLoaderForRepeatMount(path.join(staging, "loader.js"));
+    const emulatorPath = path.join(staging, "src", "emulator.js");
+    await writeFile(emulatorPath, patchEmulatorJsCoreCache(await readFile(emulatorPath, "utf8")));
     const coresDirectory = path.join(staging, "cores");
     await mkdir(coresDirectory, { recursive: true });
     for (const item of coreSources) await cp(item.source, path.join(coresDirectory, item.fileName));

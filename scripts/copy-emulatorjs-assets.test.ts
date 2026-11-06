@@ -69,7 +69,7 @@ function fixtureProject(): string {
   write(runtime, "emulator.css", "css");
   write(runtime, "localization/ko-KO.json", "{}");
   write(runtime, "compression/extractzip.js", "zip");
-  write(runtime, "src/emulator.js", "runtime");
+  write(runtime, "src/emulator.js", readFileSync("node_modules/@emulatorjs/emulatorjs/data/src/emulator.js", "utf8"));
   for (const [packageName, core] of [["core-mame2003_plus", "mame2003_plus"], ["core-fbneo", "fbneo"]]) {
     const packageRoot = path.join(root, "node_modules", "@emulatorjs", packageName);
     for (const variant of ["wasm", "legacy-wasm", "thread-wasm", "thread-legacy-wasm"]) {

@@ -123,12 +123,15 @@ describe("createEmulatorJsCore", () => {
 
     const starting = Promise.resolve(core.start());
     core.dispose();
+    const nextGame = { id: "next-game" };
+    host.replaceChildren(nextGame as unknown as Node);
     mounting.resolve(instance);
     await starting;
 
     expect(instance.setInput).toHaveBeenCalledWith(0, 0, false);
     expect(instance.setInput).toHaveBeenCalledWith(0, 7, false);
     expect(instance.destroy).toHaveBeenCalledTimes(1);
+    expect(host.children[0]).toBe(nextGame);
     expect(host.replaceChildren).toHaveBeenCalled();
     expect(revoke).toHaveBeenCalledTimes(1);
   });

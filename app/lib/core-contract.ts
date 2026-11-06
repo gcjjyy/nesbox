@@ -44,6 +44,7 @@ export interface CoreMountTargets {
   canvas: HTMLCanvasElement;
   hostElement: HTMLElement;
   onLoadProgress?: (progress: GameLoadProgress) => void;
+  onRuntimeStatus?: (message: string) => void;
 }
 
 export interface NesboxCore {

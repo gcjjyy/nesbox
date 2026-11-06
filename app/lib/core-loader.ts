@@ -18,7 +18,7 @@ const loadedScripts = new Map<string, Promise<void>>();
 export async function createCore(emulatorId: EmulatorId, targets: CoreMountTargets): Promise<NesboxCore> {
   const target = requiredProfile(emulatorId);
   if (target.runtime === "emulatorjs") {
-    return createEmulatorJsCore(target, targets.hostElement, undefined, targets.onLoadProgress);
+    return createEmulatorJsCore(target, targets.hostElement, undefined, targets.onLoadProgress, targets.onRuntimeStatus);
   }
   await loadScript(target.scriptUrl);
   const factory = window[target.factoryName as keyof Window] as NesboxCoreFactory | undefined;

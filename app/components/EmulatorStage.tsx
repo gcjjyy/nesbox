@@ -365,6 +365,9 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
     try {
       core = await createCore(game.emulatorId, {
         canvas, hostElement,
+        onRuntimeStatus: (message) => {
+          if (!isStaleLoad(seq)) onStatus(message);
+        },
         onLoadProgress: (progress) => {
           if (isStaleLoad(seq)) return;
           setLoadProgress(progress);

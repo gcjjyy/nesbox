@@ -101,10 +101,11 @@ describe("createCore", () => {
     const hostElement = {} as HTMLElement;
     const canvas = {} as HTMLCanvasElement;
     const onLoadProgress = vi.fn();
+    const onRuntimeStatus = vi.fn();
     createEmulatorJsCore.mockResolvedValueOnce(core);
     vi.spyOn(audioSession, "getContext");
 
-    await expect(createCore("fbneo", { canvas, hostElement, onLoadProgress })).resolves.toBe(core);
+    await expect(createCore("fbneo", { canvas, hostElement, onLoadProgress, onRuntimeStatus })).resolves.toBe(core);
 
     expect(audioSession.getContext).not.toHaveBeenCalled();
     expect(createEmulatorJsCore).toHaveBeenCalledWith(
@@ -112,6 +113,7 @@ describe("createCore", () => {
       hostElement,
       undefined,
       onLoadProgress,
+      onRuntimeStatus,
     );
   });
 });
