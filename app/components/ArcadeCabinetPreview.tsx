@@ -29,7 +29,7 @@ export function ArcadeCabinetPreview({ cover, title = "MAME" }: { cover?: string
         <linearGradient id={`${id}-glass`} x2="1" y2="1">
           <stop stopColor="#d9f3eb" stopOpacity=".17"/><stop offset=".36" stopColor="#d9f3eb" stopOpacity="0"/><stop offset="1" stopColor="#000" stopOpacity=".1"/>
         </linearGradient>
-        <clipPath id={`${id}-screen`}><rect x="156" y="61" width="748" height="380" rx="32"/></clipPath>
+        <clipPath id={`${id}-screen`}><rect x="132" y="61" width="796" height="362" rx="32"/></clipPath>
         <pattern id={`${id}-lines`} width="4" height="4" patternUnits="userSpaceOnUse">
           <path d="M0 3.5H4" stroke="#000" strokeOpacity=".13"/>
         </pattern>
@@ -41,16 +41,16 @@ export function ArcadeCabinetPreview({ cover, title = "MAME" }: { cover?: string
       <path d="M74 10H91L78 483L29 650H9L59 481Z" fill={paint("trim")}/>
       <path d="M969 10H986L1001 481L1051 650H1031L982 483Z" fill={paint("trim")}/>
       <path d="M105 27H955" stroke="#62675e" strokeOpacity=".45" strokeWidth="2"/>
-      <rect x="128" y="38" width="804" height="426" rx="44" fill="#0a100e" stroke="#51594f" strokeWidth="3"/>
-      <rect x="145" y="50" width="770" height="402" rx="38" fill="#030806" stroke="#020504" strokeWidth="8"/>
+      <rect x="104" y="38" width="852" height="408" rx="44" fill="#0a100e" stroke="#51594f" strokeWidth="3"/>
+      <rect x="121" y="50" width="818" height="384" rx="38" fill="#030806" stroke="#020504" strokeWidth="8"/>
       <g className="arcade-grid-machine__screen" clipPath={paint("screen")}>
-        <rect x="156" y="61" width="748" height="380" fill="#07120e"/>
-        {cover ? <image href={cover} x="156" y="61" width="748" height="380" preserveAspectRatio="none"/> :
+        <rect x="132" y="61" width="796" height="362" fill="#07120e"/>
+        {cover ? <image href={cover} x="132" y="61" width="796" height="362" preserveAspectRatio="none"/> :
           <text x="530" y="263" textAnchor="middle" fill="#c5d5ab" fontSize="30" fontFamily="monospace">INSERT COIN</text>}
-        <rect x="156" y="61" width="748" height="380" fill={paint("lines")}/>
-        <rect x="156" y="61" width="748" height="380" fill={paint("glass")}/>
+        <rect x="132" y="61" width="796" height="362" fill={paint("lines")}/>
+        <rect x="132" y="61" width="796" height="362" fill={paint("glass")}/>
       </g>
-      <path d="M163 96Q165 70 194 69H862" fill="none" stroke="#d0e4d7" strokeOpacity=".17" strokeWidth="3"/>
+      <path d="M139 96Q141 70 170 69H886" fill="none" stroke="#d0e4d7" strokeOpacity=".17" strokeWidth="3"/>
       <path d="M79 482H981L1032 646H28Z" fill={paint("deck")} stroke="#738074" strokeWidth="2"/>
       <path d="M80 484H980L986 504H74Z" fill="#141e19"/>
       <path d="M42 621H1018L1023 634H37Z" fill="#bc5b39"/>
