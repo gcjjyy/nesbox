@@ -4,7 +4,7 @@ export function ArcadeCabinetPreview({ cover, title = "MAME" }: { cover?: string
   const id = useId().replace(/:/g, "");
   const paint = (name: string) => `url(#${id}-${name})`;
   // Match the cabinet's 13 / 467 outward slope, retaining rounded CRT corners.
-  const screenOutline = "M148 38H912Q956 38 957.2 80L966.4 411Q967.6 455 923.6 455H136.4Q92.4 455 93.6 411L102.8 80Q104 38 148 38Z";
+  const screenOutline = "M161 38H899Q932 38 932.9 71L942.7 422Q943.6 455 910.6 455H149.4Q116.4 455 117.3 422L127.1 71Q128 38 161 38Z";
   return (
     <svg className="arcade-grid-machine" viewBox="0 0 1060 704" role="img"
       aria-label="MAME 그리드 카드 시안" data-grid-ratio="1060:704">
@@ -44,14 +44,14 @@ export function ArcadeCabinetPreview({ cover, title = "MAME" }: { cover?: string
       <path d="M969 10H986L1001 481L1051 650H1031L982 483Z" fill={paint("trim")}/>
       <path d="M105 27H955" stroke="#62675e" strokeOpacity=".45" strokeWidth="2"/>
       <g className="arcade-grid-machine__screen" clipPath={paint("screen")}>
-        <rect x="92" y="38" width="876" height="417" fill="#07120e"/>
-        {cover ? <image href={cover} x="92" y="38" width="876" height="417" preserveAspectRatio="none"/> :
+        <rect x="116" y="38" width="828" height="417" fill="#07120e"/>
+        {cover ? <image href={cover} x="116" y="38" width="828" height="417" preserveAspectRatio="none"/> :
           <text x="530" y="263" textAnchor="middle" fill="#c5d5ab" fontSize="30" fontFamily="monospace">INSERT COIN</text>}
-        <rect x="92" y="38" width="876" height="417" fill={paint("lines")}/>
-        <rect x="92" y="38" width="876" height="417" fill={paint("glass")}/>
+        <rect x="116" y="38" width="828" height="417" fill={paint("lines")}/>
+        <rect x="116" y="38" width="828" height="417" fill={paint("glass")}/>
       </g>
       <path d={screenOutline} fill="none" stroke="#51594f" strokeWidth="3"/>
-      <path d="M111 85Q113 47 151 46H910" fill="none" stroke="#d0e4d7" strokeOpacity=".17" strokeWidth="3"/>
+      <path d="M135 76Q136 46 161 46H886" fill="none" stroke="#d0e4d7" strokeOpacity=".17" strokeWidth="3"/>
       <path d="M79 482H981L1032 646H28Z" fill={paint("deck")} stroke="#738074" strokeWidth="2"/>
       <path d="M80 484H980L986 504H74Z" fill="#141e19"/>
       <path d="M42 621H1018L1023 634H37Z" fill="#bc5b39"/>
