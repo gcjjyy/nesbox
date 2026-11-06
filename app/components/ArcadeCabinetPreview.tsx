@@ -60,8 +60,8 @@ export function ArcadeCabinetPreview({ cover, title = "MAME" }: { cover?: string
       <path d="M30 650H1030" stroke="#596557" strokeWidth="3"/>
       <text x="61" y="674" fill="#879584" fontFamily="monospace" fontSize="12" letterSpacing="3">NESBOX</text>
       <text x="998" y="674" textAnchor="end" fill="#879584" fontFamily="monospace" fontSize="12" letterSpacing="3">ARCADE SYSTEM</text>
-      {[ [72,523], [988,523], [49,607], [1011,607] ].map(([x,y]) => (
-        <g key={x}><circle cx={x} cy={y} r="5" fill="#0a110d" stroke="#7b8879" strokeWidth="2"/><path d={`M${x-2} ${y+2}l4-4`} stroke="#8a9785"/></g>
+      {[ [92,523], [968,523], [69,607], [991,607] ].map(([x,y]) => (
+        <g key={x}><circle cx={x} cy={y} r="5" fill="#141b16" stroke="#4e594e" strokeWidth="1.5"/><path d={`M${x-2} ${y+2}l4-4`} stroke="#75806f"/></g>
       ))}
       <g aria-label="조이스틱">
         <ellipse cx="294" cy="583" rx="72" ry="24" fill="#101b14" stroke="#68765f" strokeWidth="3"/>
