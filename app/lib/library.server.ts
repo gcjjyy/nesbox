@@ -36,8 +36,13 @@ export function getLibraryDb(): Database.Database {
   mkdirSync(DATA_DIR, { recursive: true });
   mkdirSync(ROM_DIR, { recursive: true });
   db = new Database(DB_PATH);
-  db.pragma("journal_mode = WAL");
-  db.exec(`
+  initializeLibraryDb(db);
+  return db;
+}
+
+export function initializeLibraryDb(database: Database.Database): void {
+  database.pragma("journal_mode = WAL");
+  database.exec(`
     CREATE TABLE IF NOT EXISTS games (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
@@ -53,8 +58,7 @@ export function getLibraryDb(): Database.Database {
     -- 상태 저장은 브라우저(IndexedDB)에만 한다. 예전 서버 저장 테이블은 비어 있어 제거한다.
     DROP TABLE IF EXISTS save_states;
   `);
-  migrateGameColumns(db);
-  return db;
+  migrateGameColumns(database);
 }
 
 function migrateGameColumns(database: Database.Database): void {
@@ -67,10 +71,14 @@ function migrateGameColumns(database: Database.Database): void {
 }
 
 export function listGames(): GameEntry[] {
-  const rows = getLibraryDb()
+  return listStoredGames().map(({ romPath: _romPath, coverPath: _coverPath, ...game }) => game);
+}
+
+export function listStoredGames(database: Database.Database = getLibraryDb()): StoredGame[] {
+  const rows = database
     .prepare("SELECT * FROM games ORDER BY pinned DESC, title COLLATE NOCASE ASC")
     .all() as GameRow[];
-  return rows.map(rowToGame);
+  return rows.map(rowToStoredGame);
 }
 
 export function getGame(gameId: string): StoredGame | null {
@@ -133,6 +141,50 @@ function upsertGameFromPath(romPath: string): boolean {
 }
 
 type GameInput = Omit<StoredGame, "addedAt" | "lastPlayedAt" | "originalTitle" | "hasCover" | "pinned" | "coverPath">;
+
+export interface ImportGameRecord {
+  id: string;
+  title: string;
+  fileName: string;
+  system: string;
+  emulatorId: string;
+  size: number;
+  romPath: string;
+  coverPath: string;
+  originalTitle: string;
+}
+
+export function importGamesAtomic(
+  records: ImportGameRecord[],
+  database: Database.Database = getLibraryDb(),
+): void {
+  const statement = database.prepare(`
+    INSERT INTO games (
+      id, title, file_name, system, emulator_id, size, rom_path,
+      added_at, last_played_at, original_title, cover_path, pinned
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 0)
+    ON CONFLICT(id) DO NOTHING
+  `);
+  const insert = database.transaction((items: ImportGameRecord[]) => {
+    const addedAt = Date.now();
+    for (const item of items) {
+      statement.run(
+        item.id,
+        item.title,
+        item.fileName,
+        item.system,
+        item.emulatorId,
+        item.size,
+        item.romPath,
+        addedAt,
+        item.originalTitle,
+        item.coverPath,
+      );
+    }
+  });
+  insert(records);
+}
 
 function upsertGame(input: GameInput): StoredGame {
   const now = Date.now();

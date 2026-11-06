@@ -3,7 +3,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import Database from "better-sqlite3";
 import { planNesArchiveImport, type ArchiveImportKind, type ArchiveImportPlan } from "../app/lib/archive-catalog.server";
+import { applyArchiveImport, type ArchiveApplyReport } from "../app/lib/archive-import.server";
 import type { StoredGame } from "../app/lib/game-types";
+import { initializeLibraryDb, listStoredGames } from "../app/lib/library.server";
 
 export interface ArchiveImportArgs {
   kind: ArchiveImportKind;
@@ -61,12 +63,24 @@ export function parseArchiveImportArgs(argv: string[]): ArchiveImportArgs {
 }
 
 export async function runArchiveImport(args: ArchiveImportArgs): Promise<ArchiveImportPlan> {
-  if (args.apply) throw new Error("--apply is not available until the atomic importer is installed");
   if (args.kind !== "nes") throw new Error("arcade planning is not available yet");
-  return planNesArchiveImport({
-    archiveRoot: args.archiveRoot,
-    existingGames: readStoredGamesReadonly(path.join(args.dataDir, "nesbox.sqlite")),
-  });
+  const dbPath = path.join(args.dataDir, "nesbox.sqlite");
+  if (!args.apply) {
+    return planNesArchiveImport({
+      archiveRoot: args.archiveRoot,
+      existingGames: readStoredGamesReadonly(dbPath),
+    });
+  }
+
+  const database = new Database(dbPath);
+  try {
+    initializeLibraryDb(database);
+    const plan = await planNesArchiveImport({ archiveRoot: args.archiveRoot, existingGames: listStoredGames(database) });
+    const applyReport = await applyArchiveImport(plan, { dataDir: args.dataDir, database, dbPath });
+    return Object.assign(plan, { applyReport });
+  } finally {
+    database.close();
+  }
 }
 
 function readStoredGamesReadonly(dbPath: string): StoredGame[] {
@@ -122,6 +136,11 @@ function printHuman(plan: ArchiveImportPlan): void {
   }
   for (const skipped of plan.skipped) {
     console.log(`SKIP\t${skipped.reason}\t${skipped.sourceKey}\t${skipped.title}`);
+  }
+  const applyReport = (plan as ArchiveImportPlan & { applyReport?: ArchiveApplyReport }).applyReport;
+  if (applyReport) {
+    console.log(`applied: ${applyReport.added}`);
+    console.log(`backup: ${applyReport.backupPath ?? "none"}`);
   }
 }
 
