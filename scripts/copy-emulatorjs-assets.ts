@@ -1,4 +1,4 @@
-import { cp, mkdir, rename, rm, stat } from "node:fs/promises";
+import { cp, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -46,6 +46,7 @@ export async function copyEmulatorJsAssets(options: {
   try {
     await rm(staging, { recursive: true, force: true });
     await cp(runtimeSource, staging, { recursive: true });
+    await patchLoaderForRepeatMount(path.join(staging, "loader.js"));
     const coresDirectory = path.join(staging, "cores");
     await mkdir(coresDirectory, { recursive: true });
     for (const item of coreSources) await cp(item.source, path.join(coresDirectory, item.fileName));
@@ -66,6 +67,33 @@ export async function copyEmulatorJsAssets(options: {
     }
     throw error;
   }
+}
+
+const DEBUG_LOADER_BRANCH = `    if (("undefined" != typeof EJS_DEBUG_XX && true === EJS_DEBUG_XX)) {
+        for (let i = 0; i < scripts.length; i++) {
+            await loadScript(scripts[i]);
+        }
+        await loadStyle("emulator.css");
+    } else {`;
+
+const REPEAT_SAFE_DEBUG_LOADER_BRANCH = `    if (("undefined" != typeof EJS_DEBUG_XX && true === EJS_DEBUG_XX)) {
+        // The readable runtime declares global classes. Loading it twice in one SPA
+        // document raises duplicate-declaration errors, so retain it across mounts.
+        if (!window.__nesboxEmulatorJsSourcesLoaded) {
+            for (let i = 0; i < scripts.length; i++) {
+                await loadScript(scripts[i]);
+            }
+            await loadStyle("emulator.css");
+            window.__nesboxEmulatorJsSourcesLoaded = true;
+        }
+    } else {`;
+
+async function patchLoaderForRepeatMount(loaderPath: string): Promise<void> {
+  const source = await readFile(loaderPath, "utf8");
+  if (!source.includes(DEBUG_LOADER_BRANCH)) {
+    throw new Error(`unsupported pinned EmulatorJS loader layout: ${loaderPath}`);
+  }
+  await writeFile(loaderPath, source.replace(DEBUG_LOADER_BRANCH, REPEAT_SAFE_DEBUG_LOADER_BRANCH));
 }
 
 async function requirePath(filePath: string): Promise<void> {

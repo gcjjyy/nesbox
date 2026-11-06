@@ -20,7 +20,10 @@ describe("copyEmulatorJsAssets", () => {
     await copyEmulatorJsAssets({ projectRoot: root, destination });
 
     expect(existsSync(path.join(destination, "stale.txt"))).toBe(false);
-    expect(readFileSync(path.join(destination, "loader.js"), "utf8")).toBe("loader");
+    const loader = readFileSync(path.join(destination, "loader.js"), "utf8");
+    expect(loader).toContain("window.__nesboxEmulatorJsSourcesLoaded");
+    expect(loader).toContain("if (!window.__nesboxEmulatorJsSourcesLoaded)");
+    expect(loader).toContain("window.__nesboxEmulatorJsSourcesLoaded = true");
     expect(readFileSync(path.join(destination, "emulator.css"), "utf8")).toBe("css");
     expect(existsSync(path.join(destination, "localization", "ko-KO.json"))).toBe(true);
     expect(existsSync(path.join(destination, "compression", "extractzip.js"))).toBe(true);
@@ -52,7 +55,17 @@ function fixtureProject(): string {
   const root = mkdtempSync(path.join(tmpdir(), "nesbox-ejs-assets-"));
   roots.push(root);
   const runtime = path.join(root, "node_modules", "@emulatorjs", "emulatorjs", "data");
-  write(runtime, "loader.js", "loader");
+  write(runtime, "loader.js", `
+    if (("undefined" != typeof EJS_DEBUG_XX && true === EJS_DEBUG_XX)) {
+        for (let i = 0; i < scripts.length; i++) {
+            await loadScript(scripts[i]);
+        }
+        await loadStyle("emulator.css");
+    } else {
+        await loadScript("emulator.min.js");
+        await loadStyle("emulator.min.css");
+    }
+`);
   write(runtime, "emulator.css", "css");
   write(runtime, "localization/ko-KO.json", "{}");
   write(runtime, "compression/extractzip.js", "zip");
