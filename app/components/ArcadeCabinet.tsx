@@ -1,13 +1,17 @@
 import { useId } from "react";
 
-export function ArcadeCabinetPreview({ cover, title = "MAME" }: { cover?: string; title?: string }) {
+export function ArcadeCabinet({ cover, title = "MAME", onCoverError }: {
+  cover?: string;
+  title?: string;
+  onCoverError?: () => void;
+}) {
   const id = useId().replace(/:/g, "");
   const paint = (name: string) => `url(#${id}-${name})`;
   // Match the cabinet's 13 / 467 outward slope, retaining rounded CRT corners.
   const screenOutline = "M151.4 38H908.6Q941.6 38 942.5 71L952.3 422Q953.2 455 920.2 455H139.8Q106.8 455 107.7 422L117.5 71Q118.4 38 151.4 38Z";
   return (
     <svg className="arcade-grid-machine" viewBox="0 0 1060 704" role="img"
-      aria-label="MAME 그리드 카드 시안" data-grid-ratio="1060:704">
+      aria-label="MAME 아케이드 게임기" data-grid-ratio="1060:704">
       <title>{`${title} — 브라운관과 조이스틱`}</title>
       <defs>
         <linearGradient id={`${id}-case`} x2="0" y2="1">
@@ -48,8 +52,9 @@ export function ArcadeCabinetPreview({ cover, title = "MAME" }: { cover?: string
       <path d="M105 27H955" stroke="#62675e" strokeOpacity=".45" strokeWidth="2"/>
       <g className="arcade-grid-machine__screen" clipPath={paint("screen")}>
         <rect x="106.4" y="38" width="847.2" height="417" fill="#07120e"/>
-        {cover ? <image href={cover} x="106.4" y="38" width="847.2" height="417" preserveAspectRatio="none"/> :
-          <text x="530" y="263" textAnchor="middle" fill="#c5d5ab" fontSize="30" fontFamily="monospace">INSERT COIN</text>}
+        {/* The fallback remains visible if loading fails before hydration attaches onError. */}
+        <text x="530" y="263" textAnchor="middle" fill="#c5d5ab" fontSize="30" fontFamily="monospace">INSERT COIN</text>
+        {cover && <image href={cover} x="106.4" y="38" width="847.2" height="417" preserveAspectRatio="none" onError={onCoverError}/>}
         <rect x="106.4" y="38" width="847.2" height="417" fill={paint("lines")}/>
         <rect x="106.4" y="38" width="847.2" height="417" fill={paint("glass")}/>
       </g>
@@ -85,19 +90,19 @@ export function ArcadeCabinetPreview({ cover, title = "MAME" }: { cover?: string
       {[{ x: 862, label: "COIN" }, { x: 923, label: "START" }].map(({ x, label }) => (
         <g key={label} aria-label={label}>
           <g transform={`translate(${x} 534) scale(.8) translate(${-x} -534)`}>
-          <ellipse cx={x+2} cy="547" rx="27" ry="18" fill="#0b130e" opacity=".4"/>
-          <ellipse cx={x} cy="543" rx="26" ry="18" fill="#101812" stroke="#303831" strokeWidth="1.5"/>
-          <ellipse cx={x} cy="539" rx="21" ry="15" fill="#8d6812"/>
-          <ellipse cx={x} cy="534" rx="21" ry="15" fill={paint("service-button")} stroke="#a47b16" strokeWidth="1"/>
-          <path d={`M${x-14} 528q12-9 26-1`} fill="none" stroke="#fff7cc" strokeOpacity=".35" strokeWidth="1.5"/>
-          <g transform={`translate(${x} 534) scale(1 .72)`}>
-            {label === "COIN" ? <g fill="none" stroke="#4f3c16" strokeWidth="1.7">
-              <circle r="7"/><path d="M-2-3h2v6m-2 0h4" strokeLinejoin="round"/>
-            </g> : <g fill="#4f3c16">
-              <circle cy="-5" r="2.5"/>
-              <path d="M-4 1Q-4-1 0-1T4 1V4H2.5V9H.5V4h-1V9h-2V4H-4Z"/>
-            </g>}
-          </g>
+            <ellipse cx={x+2} cy="547" rx="27" ry="18" fill="#0b130e" opacity=".4"/>
+            <ellipse cx={x} cy="543" rx="26" ry="18" fill="#101812" stroke="#303831" strokeWidth="1.5"/>
+            <ellipse cx={x} cy="539" rx="21" ry="15" fill="#8d6812"/>
+            <ellipse cx={x} cy="534" rx="21" ry="15" fill={paint("service-button")} stroke="#a47b16" strokeWidth="1"/>
+            <path d={`M${x-14} 528q12-9 26-1`} fill="none" stroke="#fff7cc" strokeOpacity=".35" strokeWidth="1.5"/>
+            <g transform={`translate(${x} 534) scale(1 .72)`}>
+              {label === "COIN" ? <g fill="none" stroke="#4f3c16" strokeWidth="1.7">
+                <circle r="7"/><path d="M-2-3h2v6m-2 0h4" strokeLinejoin="round"/>
+              </g> : <g fill="#4f3c16">
+                <circle cy="-5" r="2.5"/>
+                <path d="M-4 1Q-4-1 0-1T4 1V4H2.5V9H.5V4h-1V9h-2V4H-4Z"/>
+              </g>}
+            </g>
           </g>
           <text x={x} y="570" fill="#909b87" fontFamily="monospace" fontSize="10" letterSpacing="1.4" textAnchor="middle">{label}</text>
         </g>

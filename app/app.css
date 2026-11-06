@@ -731,42 +731,30 @@ button {
   font-weight: 800;
 }
 
-/* 아케이드 항목은 카트리지 대신 4:3 캐비닛 스크린으로 구분한다. */
+/* MAME cabinets share the NES cartridge footprint. */
+.arcade-grid-machine {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1060 / 704;
+  overflow: visible;
+  filter: drop-shadow(0 12px 12px #0006);
+}
+
 .cart--arcade .cart__shape {
-  aspect-ratio: 4 / 3;
+  filter: none;
 }
 
-.cart--arcade .cart__body {
-  height: 100%;
-  border: 1px solid #41494c;
-  border-radius: 18px 18px 8px 8px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 20%),
-    #111517;
-  box-shadow:
-    inset 0 0 0 5px #080a0b,
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+.cart--arcade:focus-visible .arcade-grid-machine {
+  outline: 2px solid var(--red-2);
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
-.cart--arcade .cart__frame {
-  inset: 6%;
-  border: 1px solid #353d40;
-  border-radius: 8px;
-  background: #020303;
-  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.92);
-}
-
-.cart--arcade .cart__label {
-  inset: 5%;
-  border-radius: 3px;
-}
-
-.cart--arcade .cart__label-art {
-  object-fit: contain;
-}
-
-.cart--arcade .cart__tab {
-  display: none;
+.cart--arcade .cart__play {
+  inset: 5.4% 10% 35.4%;
+  background: transparent;
+  filter: drop-shadow(0 2px 5px #000);
 }
 
 .generated-label {
@@ -2361,72 +2349,4 @@ button {
 .control-map__keys .keymap {
   --cap: 28px;
   flex-wrap: nowrap;
-}
-
-/* Review-only compact MAME cards. */
-.arcade-design-page {
-  height: 100dvh;
-  overflow: auto;
-  padding: 0 clamp(18px, 4vw, 64px) 36px;
-  color: #e6e5d9;
-  background: #141815;
-}
-.arcade-review-header, .arcade-review-intro, .arcade-review-hero,
-.arcade-review-library, .arcade-review-footer {
-  max-width: 1180px;
-  margin-inline: auto;
-}
-.arcade-review-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 80px;
-  border-bottom: 1px solid #323a31;
-}
-.arcade-review-header a { color: #dedfd0; font: 600 14px var(--font-mono); text-decoration: none; }
-.arcade-review-header > span { color: #9ba18d; font: 10px var(--font-mono); letter-spacing: .12em; }
-.arcade-review-intro { padding-top: 56px; }
-.arcade-review-eyebrow { color: #c58056; font: 10px var(--font-mono); letter-spacing: .24em; }
-.arcade-review-intro h1 { margin: 16px 0; font-size: clamp(30px, 4vw, 48px); font-weight: 600; letter-spacing: -.055em; }
-.arcade-review-intro p { color: #a3ab9b; font-size: 14px; line-height: 1.8; margin: 0; }
-.arcade-review-hero {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  padding: 20px 0 32px;
-  background: radial-gradient(ellipse at 50% 65%, #65705220, transparent 65%);
-}
-.arcade-review-hero__card { width: min(590px, 90%); }
-.arcade-grid-machine {
-  display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 1060 / 704;
-  overflow: visible;
-  filter: drop-shadow(0 12px 12px #0006);
-}
-.arcade-review-hero > span { margin-top: 24px; color: #838e79; font: 9px var(--font-mono); letter-spacing: .24em; }
-.arcade-review-library { margin-top: 32px; border: 1px solid #343e32; border-radius: 10px; background: #1b211c; }
-.arcade-review-library > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 24px; border-bottom: 1px solid #343e32; }
-.arcade-review-library h2 { margin: 0; font-size: 14px; font-weight: 500; }
-.arcade-review-library header span { color: #909c87; font-size: 11px; }
-.arcade-review-library .catalog-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.arcade-review-library .cart { cursor: default; }
-.arcade-review-library .cart:hover .cart__shape { transform: none; }
-.arcade-review-library .cart__play { display: none; }
-.arcade-review-footer { padding-top: 28px; color: #8b9581; font-size: 12px; line-height: 1.7; }
-@media (max-width: 900px) {
-  .arcade-review-library .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 560px) {
-  .arcade-review-header { min-height: 62px; }
-  .arcade-review-header > span { font-size: 8px; }
-  .arcade-review-intro { padding-top: 36px; }
-  .arcade-review-intro p { font-size: 12px; }
-  .arcade-review-hero { padding-top: 32px; }
-  .arcade-review-hero__card { width: 100%; }
-  .arcade-review-library > header { padding: 16px; flex-wrap: wrap; }
-  .arcade-review-library .catalog-grid { padding: 18px 12px; gap: 24px 12px; }
-  .arcade-review-library .cart__info strong { font-size: 11px; }
-  .arcade-review-library .cart__meta span { font-size: 8px; padding: 1px 3px; }
 }

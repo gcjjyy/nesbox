@@ -1,3 +1,4 @@
+import { ArcadeCabinet } from "./ArcadeCabinet";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Check, ChevronDown, Clock, Gamepad2, LayoutGrid, Play, Search } from "lucide-react";
 import {
@@ -191,13 +192,17 @@ export function GameCard({ game, playedAt, onLaunch }: { game: GameEntry; played
       aria-label={`${labels.primary} 실행`}
     >
       <span className="cart__shape" aria-hidden>
+        {isArcade ? <>
+          <ArcadeCabinet cover={showCover ? src : undefined} title={labels.primary} onCoverError={() => setCoverFailed(true)} />
+          <span className="cart__play"><Play size={26} fill="currentColor" /></span>
+        </> : <>
         <span className="cart__body">
           <span className="cart__frame">
             <span className="cart__label">
               {showCover ? (
                 <img
                   ref={artRef}
-                  className={portrait && !isArcade ? "cart__label-art cart__label-art--portrait" : "cart__label-art"}
+                  className={portrait ? "cart__label-art cart__label-art--portrait" : "cart__label-art"}
                   src={src}
                   alt=""
                   loading="lazy"
@@ -215,6 +220,7 @@ export function GameCard({ game, playedAt, onLaunch }: { game: GameEntry; played
           </span>
         </span>
         <span className="cart__tab" />
+        </>}
       </span>
       <span className="cart__info">
         <strong title={labels.primary}>{labels.primary}</strong>
