@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Correct NES card title priority, simplify keyboard settings into overview/edit states, apply a simple NESBOX library brand, and publish a review-only upright arcade cabinet page.
+**Goal:** Correct NES card title priority, simplify keyboard settings into overview/edit states, apply a simple NESBOX library brand, and publish a review-only compact MAME grid-card page.
 
-**Architecture:** A pure display helper owns NES primary and secondary card labels without touching stored data. The existing settings modal becomes a two-state overview/editor while retaining the current binding engine. A new React Router route renders an isolated semantic HTML/CSS cabinet preview; the live player remains unchanged.
+**Architecture:** A pure display helper owns NES primary and secondary card labels without touching stored data. The existing settings modal becomes a two-state overview/editor while retaining the current binding engine. A new React Router route renders an isolated semantic HTML/CSS MAME grid-card preview beside NES cartridge references; the live catalog card remains unchanged.
 
 **Tech Stack:** TypeScript, React 19, React Router 7, CSS, Vitest, Playwright smoke verification
 
@@ -17,15 +17,15 @@
 - Do not change key-binding persistence, collision handling, reserved keys, or defaults.
 - Do not connect the preview to EmulatorJS, ROM loading, or input handlers.
 - Do not add image or UI dependencies.
-- Keep the live MAME player unchanged until the user approves the preview.
+- Keep the live MAME catalog card unchanged until the user approves the preview.
 
 ## Review Focus
 
 - A missing/blank `originalTitle` must fall back to the filename stem, removing only the final extension.
 - Non-NES cards must retain their current title presentation.
 - Settings must reopen in overview while keeping edits already saved before returning from mapping mode.
-- Long cabinet marquee and screen copy must not overflow the housing.
-- Narrow screens must keep the joystick and all six buttons visible.
+- The MAME and NES sample image areas must have identical width and height.
+- Narrow screens must keep the CRT, joystick, and all six buttons visible.
 
 ---
 
@@ -114,7 +114,7 @@
 
   Commit message: `feat(settings): separate key mapping mode`
 
-### Task 3: Arcade cabinet design preview
+### Task 3: Compact MAME grid-card design preview
 
 **Files:**
 - Create: `app/routes/design.arcade-cabinet.tsx`
@@ -127,13 +127,15 @@
 
 - [ ] **Step 1: Add the preview route and semantic cabinet markup**
 
-  Include the preview notice, marquee, CRT scene, speaker grille, instruction
-  strip, joystick, Coin/Start controls, and six-button 2×3 layout.
+  Include a preview notice and an actual library-width comparison grid. The
+  MAME tile contains only a 4:3 CRT scene, red joystick, Coin/Start indicators,
+  and a six-button 2×3 layout; omit all full-cabinet furniture.
 
 - [ ] **Step 2: Add isolated responsive styles**
 
-  Scope all rules under `.arcade-design-page`; preserve 4:3 screen proportions,
-  use scanlines and glass reflections, and keep controls visible at 360px width.
+  Scope all rules under `.arcade-design-page`; use the NES cartridge image
+  ratio `1060:704`, preserve 4:3 inside the CRT, and keep controls visible at
+  360px width.
 
 - [ ] **Step 3: Run typecheck and production build**
 
@@ -143,9 +145,9 @@
 
 - [ ] **Step 4: Browser-review desktop and mobile layouts**
 
-  Use Playwright at 1440×1000 and 390×844. Verify the preview notice, `NESBOX
-  ARCADE` marquee, CRT, one joystick, six action buttons, and no EmulatorJS
-  canvas or ROM request.
+  Use Playwright at 1440×1000 and 390×844. Verify identical NES/MAME sample
+  dimensions, one CRT, one joystick, six action buttons per MAME tile, and no
+  EmulatorJS canvas or ROM request.
 
 - [ ] **Step 5: Commit**
 
