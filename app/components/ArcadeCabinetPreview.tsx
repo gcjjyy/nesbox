@@ -66,10 +66,10 @@ export function ArcadeCabinetPreview({ cover, title = "MAME" }: { cover?: string
       <g aria-label="조이스틱">
         <ellipse cx="294" cy="583" rx="72" ry="24" fill="#101b14" stroke="#68765f" strokeWidth="3"/>
         <ellipse cx="294" cy="580" rx="49" ry="15" fill="#070f0a" stroke="#293e2c" strokeWidth="2"/>
-        <path d="M284 504H298L302 579Q294 587 285 579Z" fill={paint("metal")}/>
-        <circle cx="289" cy="487" r="36" fill="#090e0b" opacity=".45" transform="translate(6 8)"/>
-        <circle cx="286" cy="478" r="36" fill={paint("red")} stroke="#6d221c" strokeWidth="2"/>
-        <ellipse cx="275" cy="462" rx="10" ry="6" fill="#ffe0bd" opacity=".33" transform="rotate(-25 275 462)"/>
+        <path d="M287 504H301L302 579Q294 587 286 579Z" fill={paint("metal")}/>
+        <circle cx="297" cy="487" r="36" fill="#090e0b" opacity=".45" transform="translate(6 8)"/>
+        <circle cx="294" cy="478" r="36" fill={paint("red")} stroke="#6d221c" strokeWidth="2"/>
+        <ellipse cx="283" cy="462" rx="10" ry="6" fill="#ffe0bd" opacity=".33" transform="rotate(-25 283 462)"/>
       </g>
       {[ [570,533], [654,520], [738,526], [587,590], [671,577], [755,583] ].map(([x,y], index) => (
         <g key={index} data-arcade-button={index+1} aria-label={`버튼 ${index+1}`}>
