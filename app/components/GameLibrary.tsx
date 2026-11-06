@@ -11,6 +11,7 @@ import {
   type CatalogSort,
 } from "../lib/catalog";
 import { emulatorById } from "../lib/emulator-registry";
+import { libraryCardLabels } from "../lib/game-display";
 import { coverUrl } from "../lib/library-client";
 import { formatBytes } from "../lib/rom";
 import type { GameEntry } from "../lib/game-types";
@@ -182,6 +183,7 @@ function GameCard({ game, playedAt, onLaunch }: { game: GameEntry; playedAt: num
   const src = coverUrl(game.id);
   const category = catalogCategoryForGame(game);
   const isArcade = category === "mame";
+  const labels = libraryCardLabels(game);
 
   // 하이드레이션 전에 이미 로드된 이미지는 onLoad가 오지 않으므로 마운트 시점에도 확인한다.
   useEffect(() => {
@@ -195,7 +197,7 @@ function GameCard({ game, playedAt, onLaunch }: { game: GameEntry; playedAt: num
       className={`cart${isArcade ? " cart--arcade" : ""}`}
       style={{ "--shell": shellColorFor(game.id) } as CSSProperties}
       onClick={() => onLaunch(game.id)}
-      aria-label={`${game.title} 실행`}
+      aria-label={`${labels.primary} 실행`}
     >
       <span className="cart__shape" aria-hidden>
         <span className="cart__body">
@@ -213,7 +215,7 @@ function GameCard({ game, playedAt, onLaunch }: { game: GameEntry; playedAt: num
                   onError={() => setCoverFailed(true)}
                 />
               ) : (
-                <GeneratedLabel title={game.title} />
+                <GeneratedLabel title={labels.primary} />
               )}
               <span className="cart__play">
                 <Play size={26} fill="currentColor" />
@@ -224,8 +226,8 @@ function GameCard({ game, playedAt, onLaunch }: { game: GameEntry; playedAt: num
         <span className="cart__tab" />
       </span>
       <span className="cart__info">
-        <strong title={game.title}>{game.title}</strong>
-        {game.originalTitle && <small title={game.originalTitle}>{game.originalTitle}</small>}
+        <strong title={labels.primary}>{labels.primary}</strong>
+        {labels.secondary && <small title={labels.secondary}>{labels.secondary}</small>}
         <span className="cart__meta">
           {isKoreanEdition(game.title) && <span className="cart__korean">한글</span>}
           <span className="cart__category">{category?.toUpperCase() ?? game.system.toUpperCase()}</span>
