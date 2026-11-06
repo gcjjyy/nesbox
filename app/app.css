@@ -2363,578 +2363,70 @@ button {
   flex-wrap: nowrap;
 }
 
-/* Review-only compact MAME card. The live grid remains unchanged until approval. */
+/* Review-only compact MAME cards. */
 .arcade-design-page {
-  --arcade-red: #ef463f;
-  --arcade-cream: #eee8d8;
   height: 100dvh;
-  padding: clamp(24px, 4vw, 58px);
   overflow: auto;
-  background:
-    radial-gradient(circle at 72% 0%, rgba(239, 70, 63, 0.09), transparent 34%),
-    linear-gradient(rgba(255, 255, 255, 0.016) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.016) 1px, transparent 1px),
-    #090c0d;
-  background-size: auto, 32px 32px, 32px 32px, auto;
-  color: var(--arcade-cream);
+  padding: 0 clamp(18px, 4vw, 64px) 36px;
+  color: #e6e5d9;
+  background: #141815;
 }
-
-.arcade-design-page__header,
-.arcade-design-page__notice,
-.arcade-grid-review,
-.arcade-grid-detail {
-  width: min(1180px, 100%);
+.arcade-review-header, .arcade-review-intro, .arcade-review-hero,
+.arcade-review-library, .arcade-review-footer {
+  max-width: 1180px;
   margin-inline: auto;
 }
-
-.arcade-design-page__header {
+.arcade-review-header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 28px;
-  margin-bottom: 24px;
+  min-height: 80px;
+  border-bottom: 1px solid #323a31;
 }
-
-.arcade-design-page__header > div > span,
-.arcade-design-page__notice,
-.arcade-grid-review__label,
-.arcade-grid-sample__info span,
-.arcade-grid-detail__notes {
-  font-family: var(--font-mono);
-  letter-spacing: 0.12em;
-}
-
-.arcade-design-page__header > div > span {
-  display: block;
-  margin-bottom: 10px;
-  color: var(--arcade-red);
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.arcade-design-page__header h1 {
-  margin: 0 0 8px;
-  font-size: clamp(25px, 4vw, 40px);
-  letter-spacing: -0.04em;
-}
-
-.arcade-design-page__header p {
-  margin: 0;
-  color: #899392;
-  font-size: 13px;
-}
-
-.arcade-design-page__header a {
-  flex: 0 0 auto;
-  padding: 10px 14px;
-  border: 1px solid #343d3e;
-  border-radius: 7px;
-  color: #aab4b1;
-  font-size: 12px;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.arcade-design-page__header a:hover,
-.arcade-design-page__header a:focus-visible {
-  border-color: var(--arcade-red);
-  color: #fff;
-}
-
-.arcade-design-page__notice {
-  display: flex;
-  min-height: 40px;
-  align-items: center;
-  gap: 10px;
-  padding: 0 13px;
-  border: 1px solid #2a3233;
-  background: #111617;
-  color: #727d7a;
-  font-size: 9px;
-}
-
-.arcade-design-page__notice i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--arcade-red);
-  box-shadow: 0 0 10px rgba(239, 70, 63, 0.7);
-}
-
-.arcade-design-page__notice strong { color: #d9ded7; }
-
-.arcade-grid-review,
-.arcade-grid-detail {
-  margin-top: 42px;
-}
-
-.arcade-grid-review__label {
-  display: grid;
-  grid-template-columns: auto auto 1fr;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 15px;
-  color: #65706e;
-  font-size: 9px;
-}
-
-.arcade-grid-review__label > span { color: var(--arcade-red); }
-
-.arcade-grid-review__label h2 {
-  margin: 0;
-  font: inherit;
-  color: #9ba5a1;
-}
-
-.arcade-grid-review__label p {
-  margin: 0;
-  text-align: right;
-}
-
-.arcade-grid-review__grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 30px 24px;
-  padding: 26px;
-  border: 1px solid #2b3334;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 140px),
-    rgba(18, 23, 25, 0.9);
-}
-
-.arcade-grid-sample {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.arcade-grid-sample__info {
-  display: grid;
-  gap: 5px;
-  min-width: 0;
-  padding: 0 2px;
-}
-
-.arcade-grid-sample__info strong {
-  overflow: hidden;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.arcade-grid-sample__info span {
-  color: #6f7b78;
-  font-size: 8px;
-}
-
-.arcade-grid-machine,
-.nes-grid-sample {
+.arcade-review-header a { color: #dedfd0; font: 600 14px var(--font-mono); text-decoration: none; }
+.arcade-review-header > span { color: #9ba18d; font: 10px var(--font-mono); letter-spacing: .12em; }
+.arcade-review-intro { padding-top: 56px; }
+.arcade-review-eyebrow { color: #c58056; font: 10px var(--font-mono); letter-spacing: .24em; }
+.arcade-review-intro h1 { margin: 16px 0; font-size: clamp(30px, 4vw, 48px); font-weight: 600; letter-spacing: -.055em; }
+.arcade-review-intro p { color: #a3ab9b; font-size: 14px; line-height: 1.8; margin: 0; }
+.arcade-review-hero {
   position: relative;
+  display: grid;
+  justify-items: center;
+  padding: 20px 0 32px;
+  background: radial-gradient(ellipse at 50% 65%, #65705220, transparent 65%);
+}
+.arcade-review-hero__card { width: min(590px, 90%); }
+.arcade-grid-machine {
   display: block;
   width: 100%;
+  height: auto;
   aspect-ratio: 1060 / 704;
-  filter: drop-shadow(0 7px 10px rgba(0, 0, 0, 0.48));
+  overflow: visible;
+  filter: drop-shadow(0 12px 12px #0006);
 }
-
-.arcade-grid-machine__housing {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  border: 1px solid #3a4244;
-  border-radius: 5% / 8%;
-  background:
-    linear-gradient(90deg, #080a0a 0 5%, #181c1d 8% 92%, #080a0a 95% 100%),
-    #0e1112;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    inset 0 -3px 0 #050606;
-}
-
-.arcade-grid-machine__housing::before,
-.arcade-grid-machine__housing::after {
-  position: absolute;
-  z-index: 4;
-  top: 5%;
-  bottom: 4%;
-  width: 3%;
-  border: 1px solid #2d3334;
-  background: linear-gradient(90deg, #080a0a, #222728);
-  content: "";
-}
-
-.arcade-grid-machine__housing::before { left: 1.4%; transform: skewY(-5deg); }
-.arcade-grid-machine__housing::after { right: 1.4%; transform: scaleX(-1) skewY(-5deg); }
-
-.arcade-grid-machine__screen-frame {
-  position: absolute;
-  top: 4.5%;
-  left: 16%;
-  z-index: 1;
-  width: 68%;
-  aspect-ratio: 4 / 3;
-  padding: 2.7%;
-  border: 1px solid #343b3c;
-  border-radius: 7% / 9%;
-  background: linear-gradient(145deg, #080a0a, #222829 52%, #070909);
-  box-shadow: inset 0 0 10px #000, 0 3px 7px rgba(0, 0, 0, 0.68);
-}
-
-.arcade-grid-machine__screen {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  border: 3px solid #030505;
-  border-radius: 9% / 11%;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(31, 80, 69, 0.35), transparent 68%),
-    linear-gradient(180deg, #06100f, #030707);
-  color: #b7e6ce;
-  font-family: var(--font-mono);
-  text-align: center;
-  text-shadow: 0 0 6px rgba(143, 184, 109, 0.72);
-}
-
-.arcade-grid-machine__screen::after {
-  position: absolute;
-  z-index: 4;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(125deg, rgba(255, 255, 255, 0.1), transparent 22% 72%, rgba(255, 255, 255, 0.02));
-  content: "";
-}
-
-.arcade-grid-machine__score {
-  position: absolute;
-  top: 7%;
-  left: 0;
-  width: 100%;
-  color: #709587;
-  font-size: clamp(4px, 0.7vw, 7px);
-  letter-spacing: 0.14em;
-}
-
-.arcade-grid-machine__scene {
-  position: absolute;
-  top: 26%;
-  right: 8%;
-  left: 8%;
-  display: grid;
-  grid-template-columns: 1fr 1fr auto 1fr 1fr;
-  align-items: end;
-  gap: 4%;
-  height: 43%;
-  border-bottom: 2px solid #325047;
-}
-
-.arcade-grid-machine__scene i {
-  display: block;
-  height: 50%;
-  background: linear-gradient(180deg, #c84a42, #531916);
-  box-shadow: 0 0 5px rgba(239, 70, 63, 0.3);
-}
-
-.arcade-grid-machine__scene i:nth-child(2),
-.arcade-grid-machine__scene i:nth-child(4) {
-  height: 78%;
-  background: linear-gradient(180deg, #84b69a, #294f40);
-  transform: skewX(-8deg);
-}
-
-.arcade-grid-machine__scene b {
-  align-self: center;
-  color: var(--arcade-red);
-  font-size: clamp(6px, 1.2vw, 11px);
-}
-
-.arcade-grid-machine__screen > strong {
-  position: absolute;
-  right: 0;
-  bottom: 7%;
-  left: 0;
-  font-size: clamp(5px, 0.9vw, 8px);
-  letter-spacing: 0.12em;
-  animation: arcade-grid-blink 1.25s steps(1) infinite;
-}
-
-.arcade-grid-machine__scanlines {
-  position: absolute;
-  z-index: 3;
-  inset: 0;
-  background: repeating-linear-gradient(180deg, transparent 0 2px, rgba(0, 0, 0, 0.24) 2px 3px);
-}
-
-@keyframes arcade-grid-blink {
-  50% { opacity: 0.3; }
-}
-
-.arcade-grid-machine__deck {
-  position: absolute;
-  z-index: 5;
-  right: 3%;
-  bottom: 2.5%;
-  left: 3%;
-  height: 34%;
-  border: 1px solid #363d3e;
-  background:
-    linear-gradient(155deg, rgba(255, 255, 255, 0.065), transparent 27%),
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.01) 0 1px, transparent 1px 4px),
-    #171b1c;
-  box-shadow: 0 5px 8px rgba(0, 0, 0, 0.68), inset 0 -6px 9px rgba(0, 0, 0, 0.35);
-  clip-path: polygon(5% 0, 95% 0, 100% 100%, 0 100%);
-}
-
-.arcade-grid-machine__joystick {
-  position: absolute;
-  top: -21%;
-  bottom: 7%;
-  left: 12%;
-  width: 20%;
-}
-
-.arcade-grid-machine__ball {
-  position: absolute;
-  z-index: 3;
-  top: 0;
-  left: 50%;
-  width: 38%;
-  aspect-ratio: 1;
-  transform: translateX(-50%);
-  border: 1px solid #761814;
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 24%, #ff9a92 0 7%, #e64039 34%, #94130f 78%);
-  box-shadow: inset -3px -4px 5px rgba(54, 0, 0, 0.4), 0 3px 5px rgba(0, 0, 0, 0.5);
-}
-
-.arcade-grid-machine__shaft {
-  position: absolute;
-  top: 25%;
-  bottom: 21%;
-  left: 50%;
-  z-index: 2;
-  width: 7%;
-  transform: translateX(-50%) rotate(-3deg);
-  transform-origin: bottom;
-  border-radius: 2px;
-  background: linear-gradient(90deg, #626869, #e4e6e0 48%, #717778);
-}
-
-.arcade-grid-machine__base {
-  position: absolute;
-  bottom: 3%;
-  left: 50%;
-  width: 74%;
-  height: 26%;
-  transform: translateX(-50%);
-  border: 1px solid #343a3b;
-  border-radius: 50%;
-  background: radial-gradient(ellipse, #252a2b 0 34%, #060808 40% 100%);
-}
-
-.arcade-grid-machine__buttons {
-  position: absolute;
-  top: 15%;
-  right: 23%;
-  display: grid;
-  width: 30%;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 13% 11%;
-  transform: rotate(-4deg);
-}
-
-.arcade-grid-machine__buttons > span,
-.arcade-grid-machine__buttons i {
-  display: block;
-  width: 100%;
-  aspect-ratio: 1;
-}
-
-.arcade-grid-machine__buttons i {
-  border: 1px solid #60100d;
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 25%, #ff8d86 0 6%, #df3832 38%, #8d120e 80%);
-  box-shadow: inset -2px -3px 3px rgba(49, 0, 0, 0.42), 0 2px 0 #3a0908, 0 3px 4px rgba(0, 0, 0, 0.55);
-}
-
-.arcade-grid-machine__system {
-  position: absolute;
-  top: 22%;
-  right: 5.5%;
-  display: grid;
-  gap: 15%;
-  color: #717a77;
-  font-family: var(--font-mono);
-  font-size: clamp(3px, 0.55vw, 6px);
-}
-
-.arcade-grid-machine__system span {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.arcade-grid-machine__system i {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--arcade-red);
-  box-shadow: 0 0 4px rgba(239, 70, 63, 0.6);
-}
-
-.nes-grid-sample__body {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 88.6%;
-  border-radius: 3.5% / 6%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 40%, rgba(0, 0, 0, 0.18)), #c4201f;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -2px 0 rgba(0, 0, 0, 0.25);
-}
-
-.nes-grid-sample--blue .nes-grid-sample__body,
-.nes-grid-sample--blue .nes-grid-sample__tab { background-color: #2a5fb8; }
-
-.nes-grid-sample__frame {
-  position: absolute;
-  inset: 6.7% 3.3% 4.5%;
-  border-radius: 2.5% / 5%;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), inset 0 2px 1px rgba(255, 255, 255, 0.18);
-}
-
-.nes-grid-sample__label {
-  position: absolute;
-  inset: 7% 3.2% 7.5%;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  padding: 7%;
-  overflow: hidden;
-  border-radius: 3px;
-  background:
-    linear-gradient(135deg, rgba(227, 230, 224, 0.96) 0 42%, rgba(21, 24, 26, 0.96) 42% 74%, rgba(143, 184, 109, 0.88) 74% 100%);
-  color: #fff;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.35);
-}
-
-.nes-grid-sample__label span {
-  color: #15191b;
-  font-family: var(--font-mono);
-  font-size: clamp(4px, 0.65vw, 7px);
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
-.nes-grid-sample__label strong {
-  align-self: center;
-  font-family: var(--font-mono);
-  font-size: clamp(12px, 2.1vw, 21px);
-  line-height: 0.95;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
-}
-
-.nes-grid-sample__label small {
-  justify-self: end;
-  font-family: var(--font-mono);
-  font-size: clamp(4px, 0.55vw, 6px);
-  letter-spacing: 0.08em;
-}
-
-.nes-grid-sample__tab {
-  position: absolute;
-  right: 6.4%;
-  bottom: 0;
-  left: 6.4%;
-  height: 12%;
-  border-radius: 0 0 2px 2px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.1)), #c4201f;
-}
-
-.arcade-grid-detail {
-  margin-bottom: 50px;
-}
-
-.arcade-grid-detail__stage {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr);
-  align-items: center;
-  gap: clamp(30px, 6vw, 76px);
-  padding: clamp(28px, 6vw, 72px);
-  border: 1px solid #2b3334;
-  background:
-    radial-gradient(circle at 36% 50%, rgba(239, 70, 63, 0.08), transparent 38%),
-    #101516;
-}
-
-.arcade-grid-detail__notes {
-  display: grid;
-  gap: 1px;
-  border: 1px solid #2c3435;
-  background: #2c3435;
-}
-
-.arcade-grid-detail__notes p {
-  display: grid;
-  grid-template-columns: 56px 1fr;
-  align-items: center;
-  gap: 12px;
-  margin: 0;
-  padding: 17px;
-  background: #111617;
-}
-
-.arcade-grid-detail__notes b {
-  color: var(--arcade-red);
-  font-size: 14px;
-}
-
-.arcade-grid-detail__notes span {
-  color: #87918e;
-  font-size: 8px;
-  line-height: 1.5;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .arcade-grid-machine__screen > strong { animation: none; }
-}
-
+.arcade-review-hero > span { margin-top: 24px; color: #838e79; font: 9px var(--font-mono); letter-spacing: .24em; }
+.arcade-review-library { margin-top: 32px; border: 1px solid #343e32; border-radius: 10px; background: #1b211c; }
+.arcade-review-library > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 24px; border-bottom: 1px solid #343e32; }
+.arcade-review-library h2 { margin: 0; font-size: 14px; font-weight: 500; }
+.arcade-review-library header span { color: #909c87; font-size: 11px; }
+.arcade-review-library .catalog-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.arcade-review-library .cart { cursor: default; }
+.arcade-review-library .cart:hover .cart__shape { transform: none; }
+.arcade-review-library .cart__play { display: none; }
+.arcade-review-footer { padding-top: 28px; color: #8b9581; font-size: 12px; line-height: 1.7; }
 @media (max-width: 900px) {
-  .arcade-grid-review__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .arcade-grid-detail__stage { grid-template-columns: 1fr; }
+  .arcade-review-library .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-
 @media (max-width: 560px) {
-  .arcade-design-page { padding: 22px 14px 44px; }
-
-  .arcade-design-page__header {
-    align-items: flex-start;
-    flex-direction: column;
-    margin-bottom: 22px;
-  }
-
-  .arcade-design-page__notice {
-    flex-wrap: wrap;
-    gap: 7px;
-    padding-block: 9px;
-  }
-
-  .arcade-design-page__notice span { width: 100%; padding-left: 16px; line-height: 1.5; }
-
-  .arcade-grid-review__label {
-    grid-template-columns: auto 1fr;
-  }
-
-  .arcade-grid-review__label p {
-    grid-column: 1 / -1;
-    line-height: 1.6;
-    text-align: left;
-  }
-
-  .arcade-grid-review__grid {
-    grid-template-columns: 1fr;
-    gap: 28px;
-    padding: 22px;
-  }
-
-  .arcade-grid-detail__stage { padding: 24px 18px; }
+  .arcade-review-header { min-height: 62px; }
+  .arcade-review-header > span { font-size: 8px; }
+  .arcade-review-intro { padding-top: 36px; }
+  .arcade-review-intro p { font-size: 12px; }
+  .arcade-review-hero { padding-top: 32px; }
+  .arcade-review-hero__card { width: 100%; }
+  .arcade-review-library > header { padding: 16px; flex-wrap: wrap; }
+  .arcade-review-library .catalog-grid { padding: 18px 12px; gap: 24px 12px; }
+  .arcade-review-library .cart__info strong { font-size: 11px; }
+  .arcade-review-library .cart__meta span { font-size: 8px; padding: 1px 3px; }
 }

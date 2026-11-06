@@ -165,7 +165,7 @@ function shellColorFor(gameId: string): string {
   return SHELL_COLORS[hash % SHELL_COLORS.length];
 }
 
-function GameCard({ game, playedAt, onLaunch }: { game: GameEntry; playedAt: number | null; onLaunch: (gameId: string) => void }) {
+export function GameCard({ game, playedAt, onLaunch }: { game: GameEntry; playedAt: number | null; onLaunch: (gameId: string) => void }) {
   const [coverFailed, setCoverFailed] = useState(false);
   const [portrait, setPortrait] = useState(false);
   const artRef = useRef<HTMLImageElement | null>(null);

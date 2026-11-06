@@ -1,97 +1,73 @@
 import type { Route } from "./+types/design.arcade-cabinet";
 import { ArcadeCabinetPreview } from "../components/ArcadeCabinetPreview";
+import { GameCard } from "../components/GameLibrary";
+import { coverUrl } from "../lib/library-client";
+import type { GameEntry } from "../lib/game-types";
 
-export function meta(_: Route.MetaArgs) {
-  return [
-    { title: "NESBOX MAME Grid Card Preview" },
-    { name: "description", content: "NESBOX MAME 라이브러리 그리드 카드 디자인 검수 페이지" },
-  ];
+export function meta() {
+  return [{ title: "NESBOX — Arcade card preview" }];
 }
 
-export default function ArcadeCabinetDesign() {
+export async function loader() {
+  const { listGames } = await import("../lib/library.server");
+  const games = listGames();
+  const nes = games.filter(g => g.system === "nes" && g.hasCover);
+  const arcade = ["sf2ce", "mslug", "1942", "contra"]
+    .map(name => games.find(g => g.system === "arcade" && g.originalTitle === name && g.hasCover))
+    .filter((g): g is GameEntry => Boolean(g));
+  const rockman = nes.find(g => g.title.includes("ROCKMAN4")) ?? nes[0];
+  const second = nes.find(g => g.title.includes("ROCKMAN5")) ?? nes.find(g => g.id !== rockman?.id);
+  return { nes: [rockman, second].filter((g): g is GameEntry => Boolean(g)), arcade };
+}
+
+export default function ArcadeCabinetDesign({ loaderData }: Route.ComponentProps) {
+  const { nes, arcade } = loaderData;
   return (
     <main className="arcade-design-page">
-      <header className="arcade-design-page__header">
-        <div>
-          <span>MAME GRID CARD · DESIGN REVIEW</span>
-          <h1>CRT + 컨트롤 패널</h1>
-          <p>NES 팩과 같은 그리드 면적에 브라운관과 조이스틱 부분만 남긴 시안입니다.</p>
-        </div>
-        <a href="/">라이브러리로 돌아가기</a>
+      <header className="arcade-review-header">
+        <a href="/">← NESBOX</a>
+        <span>DESIGN PREVIEW / 03</span>
       </header>
-
-      <section className="arcade-design-page__notice" aria-label="시안 안내">
-        <i aria-hidden />
-        <strong>PREVIEW ONLY</strong>
-        <span>실제 MAME 카드에는 아직 적용되지 않았습니다.</span>
+      <section className="arcade-review-intro">
+        <span className="arcade-review-eyebrow">THE ARCADE COLLECTION</span>
+        <h1>오락실을 한 칸에.</h1>
+        <p>브라운관, 조이스틱, 여섯 개의 버튼.<br/>NES 팩 옆에 놓일 작은 오락기입니다.</p>
       </section>
-
-      <section className="arcade-grid-review" aria-labelledby="grid-review-heading">
-        <div className="arcade-grid-review__label">
-          <span>01</span>
-          <h2 id="grid-review-heading">ACTUAL LIBRARY GRID</h2>
-          <p>두 카드의 이미지 영역은 모두 1060:704로 동일합니다.</p>
+      <section className="arcade-review-hero" aria-label="MAME 카드 확대 보기">
+        <div className="arcade-review-hero__card">
+          <ArcadeCabinetPreview cover={arcade[0] ? coverUrl(arcade[0].id) : undefined} title={arcade[0]?.title}/>
         </div>
-        <div className="arcade-grid-review__grid">
-          <GridSample system="nes" title="Rockman 4" />
-          <GridSample system="mame" title="Street Fighter II" />
-          <GridSample system="nes" title="Contra" tone="blue" />
-          <GridSample system="mame" title="1942" />
-        </div>
+        <span>CRT & CONTROL DECK</span>
       </section>
-
-      <section className="arcade-grid-detail" aria-labelledby="grid-detail-heading">
-        <div className="arcade-grid-review__label">
-          <span>02</span>
-          <h2 id="grid-detail-heading">CARD DETAIL</h2>
-          <p>마키와 동전함 없이 CRT와 얕은 6버튼 조작판만 사용합니다.</p>
-        </div>
-        <div className="arcade-grid-detail__stage">
-          <ArcadeCabinetPreview />
-          <div className="arcade-grid-detail__notes">
-            <p><b>70%</b><span>4:3 CRT 영역</span></p>
-            <p><b>30%</b><span>조이스틱 + 6버튼</span></p>
-            <p><b>1:1</b><span>NES 팩과 같은 외곽 비율</span></p>
-          </div>
-        </div>
+      <section className="arcade-review-library" aria-labelledby="comparison-title">
+        <header><h2 id="comparison-title">라이브러리에 놓으면</h2><span>실제 NES 팩 · 같은 카드 비율</span></header>
+        <ul className="catalog-grid">
+          {nes[0] && <li><GameCard game={nes[0]} playedAt={null} onLaunch={() => undefined}/></li>}
+          {arcade[0] && <li><ArcadeSample game={arcade[0]}/></li>}
+          {nes[1] && <li><GameCard game={nes[1]} playedAt={null} onLaunch={() => undefined}/></li>}
+          {arcade[1] && <li><ArcadeSample game={arcade[1]}/></li>}
+        </ul>
       </section>
+      <section className="arcade-review-library arcade-review-library--variants" aria-labelledby="screens-title">
+        <header><h2 id="screens-title">게임 화면을 담은 모습</h2><span>가로 · 세로 화면</span></header>
+        <ul className="catalog-grid">
+          {arcade.map(game => <li key={game.id}><ArcadeSample game={game}/></li>)}
+        </ul>
+      </section>
+      <footer className="arcade-review-footer">검수용 시안입니다. 실제 게임 목록에는 아직 적용하지 않았습니다.</footer>
     </main>
   );
 }
 
-function GridSample({
-  system,
-  title,
-  tone = "red",
-}: {
-  system: "nes" | "mame";
-  title: string;
-  tone?: "red" | "blue";
-}) {
+function ArcadeSample({ game }: { game: GameEntry }) {
   return (
-    <article className="arcade-grid-sample">
-      {system === "mame" ? <ArcadeCabinetPreview /> : <NesCartridgeSample tone={tone} />}
-      <div className="arcade-grid-sample__info">
-        <strong>{title}</strong>
-        <span>{system === "mame" ? "MAME · 6 BUTTON" : "NES · FCEUX"}</span>
+    <article className="cart arcade-review-card">
+      <ArcadeCabinetPreview cover={coverUrl(game.id)} title={game.title}/>
+      <div className="cart__info">
+        <strong>{game.title}</strong>
+        <small>{game.originalTitle}</small>
+        <span className="cart__meta"><span className="cart__category">MAME</span><span>{game.emulatorId === "fbneo" ? "FBNeo" : "MAME 2003+"}</span></span>
       </div>
     </article>
-  );
-}
-
-function NesCartridgeSample({ tone }: { tone: "red" | "blue" }) {
-  return (
-    <div className={`nes-grid-sample nes-grid-sample--${tone}`} aria-label="NES 팩 비교 샘플">
-      <div className="nes-grid-sample__body">
-        <div className="nes-grid-sample__frame">
-          <div className="nes-grid-sample__label">
-            <span>FAMILY COMPUTER</span>
-            <strong>{tone === "blue" ? "CONTRA" : "ROCKMAN 4"}</strong>
-            <small>NESBOX</small>
-          </div>
-        </div>
-      </div>
-      <div className="nes-grid-sample__tab" />
-    </div>
   );
 }
