@@ -28,6 +28,9 @@ export function ArcadeCabinetPreview({ cover, title = "MAME" }: { cover?: string
         <radialGradient id={`${id}-button`} cx=".35" cy=".15" r=".95">
           <stop stopColor="#f39469"/><stop offset=".28" stopColor="#d65a3d"/><stop offset=".9" stopColor="#853020"/>
         </radialGradient>
+        <radialGradient id={`${id}-service-button`} cx=".35" cy=".18" r=".9">
+          <stop stopColor="#eee8d6"/><stop offset=".45" stopColor="#c8c4b2"/><stop offset="1" stopColor="#929782"/>
+        </radialGradient>
         <linearGradient id={`${id}-glass`} x2="1" y2="1">
           <stop stopColor="#d9f3eb" stopOpacity=".17"/><stop offset=".36" stopColor="#d9f3eb" stopOpacity="0"/><stop offset="1" stopColor="#000" stopOpacity=".1"/>
         </linearGradient>
@@ -61,7 +64,7 @@ export function ArcadeCabinetPreview({ cover, title = "MAME" }: { cover?: string
       <text x="61" y="674" fill="#879584" fontFamily="monospace" fontSize="12" letterSpacing="3">NESBOX</text>
       <text x="998" y="674" textAnchor="end" fill="#879584" fontFamily="monospace" fontSize="12" letterSpacing="3">ARCADE SYSTEM</text>
       {[ [92,523], [968,523], [69,607], [991,607] ].map(([x,y]) => (
-        <g key={x}><circle cx={x} cy={y} r="5" fill="#141b16" stroke="#4e594e" strokeWidth="1.5"/><path d={`M${x-2} ${y+2}l4-4`} stroke="#75806f"/></g>
+        <g key={x}><circle cx={x} cy={y} r="5" fill="#75806f" stroke="#101610" strokeWidth="1.5"/><path d={`M${x-2} ${y+2}l4-4`} stroke="#263025"/></g>
       ))}
       <g aria-label="조이스틱">
         <ellipse cx="294" cy="583" rx="72" ry="24" fill="#101b14" stroke="#68765f" strokeWidth="3"/>
@@ -79,12 +82,24 @@ export function ArcadeCabinetPreview({ cover, title = "MAME" }: { cover?: string
           <path d={`M${x-16} ${y-9}q14-12 30-1`} fill="none" stroke="#f1ae88" strokeOpacity=".25" strokeWidth="2"/>
         </g>
       ))}
-      <g fill="#c2c7b2" stroke="#101d13" strokeWidth="4">
-        <ellipse cx="882" cy="535" rx="16" ry="11"/><ellipse cx="925" cy="535" rx="16" ry="11"/>
-      </g>
-      <g fill="#bdc5b2" fontFamily="monospace" fontSize="10" textAnchor="middle">
-        <text x="882" y="564">COIN</text><text x="925" y="564">START</text>
-      </g>
+      {[{ x: 862, label: "COIN" }, { x: 923, label: "START" }].map(({ x, label }) => (
+        <g key={label} aria-label={label}>
+          <ellipse cx={x+2} cy="547" rx="27" ry="18" fill="#0b130e" opacity=".4"/>
+          <ellipse cx={x} cy="543" rx="26" ry="18" fill="#101812" stroke="#303831" strokeWidth="1.5"/>
+          <ellipse cx={x} cy="539" rx="21" ry="15" fill="#697260"/>
+          <ellipse cx={x} cy="534" rx="21" ry="15" fill={paint("service-button")} stroke="#777e6b" strokeWidth="1"/>
+          <path d={`M${x-14} 528q12-9 26-1`} fill="none" stroke="#fff8e7" strokeOpacity=".35" strokeWidth="1.5"/>
+          <g transform={`translate(${x} 534) scale(1 .72)`}>
+            {label === "COIN" ? <g fill="none" stroke="#3b4438" strokeWidth="1.7">
+              <circle r="7"/><path d="M-2-3h2v6m-2 0h4" strokeLinejoin="round"/>
+            </g> : <g fill="#3b4438">
+              <circle cy="-5" r="2.5"/>
+              <path d="M-4 1Q-4-1 0-1T4 1V4H2.5V9H.5V4h-1V9h-2V4H-4Z"/>
+            </g>}
+          </g>
+          <text x={x} y="576" fill="#909b87" fontFamily="monospace" fontSize="10" letterSpacing="1.4" textAnchor="middle">{label}</text>
+        </g>
+      ))}
     </svg>
   );
 }
