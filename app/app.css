@@ -58,6 +58,331 @@ button {
   border: 0;
 }
 
+/* Review-only NESBOX typography concept. Kept separate from the live library. */
+.logo-design-page {
+  --logo-paper: #e8e4d7;
+  --logo-red: #ed4f45;
+  --logo-ink: #101416;
+  height: 100dvh;
+  padding: clamp(28px, 5vw, 72px);
+  overflow: auto;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    radial-gradient(circle at 50% -20%, rgba(237, 79, 69, 0.14), transparent 42%),
+    #0d1012;
+  background-size: 32px 32px, 32px 32px, auto, auto;
+  color: var(--logo-paper);
+}
+
+.logo-design-page__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  width: min(1180px, 100%);
+  margin: 0 auto clamp(54px, 8vw, 104px);
+}
+
+.logo-design-page__eyebrow,
+.logo-design-section-label,
+.logo-design-variant > span,
+.logo-design-context__status,
+.logo-design-hero__stage > p {
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+}
+
+.logo-design-page__eyebrow {
+  display: block;
+  margin-bottom: 13px;
+  color: var(--logo-red);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.logo-design-page__header h1 {
+  margin: 0 0 9px;
+  font-size: clamp(26px, 4vw, 42px);
+  letter-spacing: -0.04em;
+}
+
+.logo-design-page__header p,
+.logo-design-context > p {
+  margin: 0;
+  color: #8d9997;
+  font-size: 13px;
+}
+
+.logo-design-page__header a {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border: 1px solid #333b3d;
+  border-radius: 7px;
+  color: #b9c2be;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.logo-design-page__header a:hover,
+.logo-design-page__header a:focus-visible {
+  border-color: var(--logo-red);
+  color: var(--logo-paper);
+}
+
+.logo-design-hero,
+.logo-design-context,
+.logo-design-variants {
+  width: min(1180px, 100%);
+  margin: 0 auto clamp(66px, 9vw, 118px);
+}
+
+.logo-design-section-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  color: #65706e;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.logo-design-section-label span {
+  color: var(--logo-red);
+}
+
+.logo-design-section-label h2 {
+  margin: 0;
+  font: inherit;
+}
+
+.logo-design-hero__stage {
+  position: relative;
+  display: flex;
+  min-height: clamp(280px, 42vw, 500px);
+  align-items: center;
+  justify-content: center;
+  padding: clamp(34px, 7vw, 96px);
+  overflow: hidden;
+  border: 1px solid #2a3032;
+  border-radius: 4px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.035), transparent 36%),
+    #121719;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.32);
+}
+
+.logo-design-hero__stage::before,
+.logo-design-hero__stage::after {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-color: #4d5655;
+  content: "";
+}
+
+.logo-design-hero__stage::before {
+  top: 18px;
+  left: 18px;
+  border-top: 1px solid;
+  border-left: 1px solid;
+}
+
+.logo-design-hero__stage::after {
+  right: 18px;
+  bottom: 18px;
+  border-right: 1px solid;
+  border-bottom: 1px solid;
+}
+
+.logo-design-hero__glow {
+  position: absolute;
+  width: 55%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(219, 53, 47, 0.12);
+  filter: blur(80px);
+}
+
+.nesbox-wordmark {
+  position: relative;
+  display: block;
+  width: min(760px, 100%);
+  height: auto;
+  overflow: visible;
+  color: var(--logo-paper, #e8e4d7);
+}
+
+.nesbox-wordmark__letter--nes {
+  fill: currentColor;
+}
+
+.nesbox-wordmark__letter--box,
+.nesbox-wordmark__signal-dot {
+  fill: var(--logo-red, #ed4f45);
+}
+
+.nesbox-wordmark__rail,
+.nesbox-wordmark__signal {
+  fill: none;
+  stroke: var(--logo-red, #ed4f45);
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  stroke-width: 3;
+}
+
+.nesbox-wordmark__rail {
+  opacity: 0.52;
+  stroke-width: 2;
+}
+
+.nesbox-wordmark--mono .nesbox-wordmark__letter,
+.nesbox-wordmark--mono .nesbox-wordmark__signal-dot {
+  fill: currentColor;
+}
+
+.nesbox-wordmark--mono .nesbox-wordmark__rail,
+.nesbox-wordmark--mono .nesbox-wordmark__signal {
+  stroke: currentColor;
+}
+
+.logo-design-hero__stage > .nesbox-wordmark {
+  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.4));
+}
+
+.logo-design-hero__stage > p {
+  position: absolute;
+  right: clamp(30px, 7vw, 94px);
+  bottom: clamp(23px, 4vw, 48px);
+  margin: 0;
+  color: #687471;
+  font-size: clamp(7px, 1vw, 10px);
+}
+
+.logo-design-hero__caption {
+  max-width: 660px;
+  margin: 18px 0 0 auto;
+  color: #9ba5a1;
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: right;
+}
+
+.logo-design-context__bar {
+  display: flex;
+  min-height: 74px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 20px;
+  border: 1px solid #2c3435;
+  background: rgba(18, 23, 25, 0.94);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.18);
+}
+
+.logo-design-context__bar .nesbox-wordmark {
+  width: clamp(180px, 26vw, 292px);
+}
+
+.logo-design-context__status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #818b88;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.logo-design-context__status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #8fb86d;
+  box-shadow: 0 0 10px rgba(143, 184, 109, 0.7);
+}
+
+.logo-design-context > p {
+  margin-top: 12px;
+}
+
+.logo-design-variants__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid #303738;
+}
+
+.logo-design-variant {
+  display: grid;
+  min-height: 250px;
+  align-content: space-between;
+  gap: 40px;
+  padding: clamp(24px, 4vw, 46px);
+}
+
+.logo-design-variant + .logo-design-variant {
+  border-left: 1px solid #303738;
+}
+
+.logo-design-variant > span {
+  font-size: 9px;
+  font-weight: 700;
+  opacity: 0.5;
+}
+
+.logo-design-variant .nesbox-wordmark {
+  width: 100%;
+}
+
+.logo-design-variant--dark {
+  background: #171c1e;
+  color: #e8e4d7;
+}
+
+.logo-design-variant--light {
+  --logo-paper: #15191b;
+  background: #dfddd3;
+  color: #15191b;
+}
+
+@media (max-width: 680px) {
+  .logo-design-page {
+    padding: 24px 18px 56px;
+  }
+
+  .logo-design-page__header {
+    align-items: flex-start;
+    flex-direction: column;
+    margin-bottom: 58px;
+  }
+
+  .logo-design-hero__stage {
+    min-height: 230px;
+    padding: 28px 18px;
+  }
+
+  .logo-design-hero__caption {
+    text-align: left;
+  }
+
+  .logo-design-context__status {
+    display: none;
+  }
+
+  .logo-design-variants__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .logo-design-variant {
+    min-height: 200px;
+  }
+
+  .logo-design-variant + .logo-design-variant {
+    border-top: 1px solid #303738;
+    border-left: 0;
+  }
+}
+
 .app-shell {
   display: grid;
   grid-template-rows: 44px 1fr;

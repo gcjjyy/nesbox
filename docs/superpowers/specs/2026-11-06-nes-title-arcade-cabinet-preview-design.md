@@ -18,6 +18,8 @@ the visual direction can be approved before the real player is changed.
 - Enter a dedicated key-mapping state only after the user presses
   `키 매핑 변경`.
 - Add a review-only page at `/design/arcade-cabinet`.
+- Add a separate review-only typography page at `/design/nesbox-logo`.
+- Present a custom vector `NESBOX` wordmark at hero, header, and one-color sizes.
 - Show a 1990s black upright cabinet with a marquee, CRT screen, sloped control
   deck, red ball-top joystick, Coin/Start controls, and six action buttons.
 - Make the preview responsive enough to review on desktop and mobile.
@@ -31,6 +33,7 @@ the visual direction can be approved before the real player is changed.
 - Do not connect EmulatorJS, keyboard input, touch input, or live ROM data to
   the cabinet preview.
 - Do not replace the existing MAME player until the preview is approved.
+- Do not replace the live `Game Library` heading until the wordmark is approved.
 
 ## Constraints
 
@@ -39,6 +42,8 @@ the visual direction can be approved before the real player is changed.
   SVG; do not add a new image or UI dependency.
 - Clearly label the page as a design preview so it cannot be mistaken for the
   live player.
+- Build the wordmark as accessible inline SVG so it stays crisp at library
+  header size without adding a bitmap asset or font dependency.
 - The key-mapping state uses NES/MAME tabs, retains the existing per-action
   capture buttons and reset action, and offers an explicit return to the main
   settings state.

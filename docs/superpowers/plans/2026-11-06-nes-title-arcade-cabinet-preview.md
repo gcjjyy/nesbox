@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Correct NES card title priority, simplify keyboard settings into overview/edit states, and publish a review-only upright arcade cabinet design page.
+**Goal:** Correct NES card title priority, simplify keyboard settings into overview/edit states, and publish review-only upright arcade cabinet and NESBOX wordmark design pages.
 
 **Architecture:** A pure display helper owns NES primary and secondary card labels without touching stored data. The existing settings modal becomes a two-state overview/editor while retaining the current binding engine. A new React Router route renders an isolated semantic HTML/CSS cabinet preview; the live player remains unchanged.
 
@@ -18,6 +18,7 @@
 - Do not connect the preview to EmulatorJS, ROM loading, or input handlers.
 - Do not add image or UI dependencies.
 - Keep the live MAME player unchanged until the user approves the preview.
+- Keep the live `Game Library` heading unchanged until the user approves the wordmark.
 
 ## Review Focus
 
@@ -151,14 +152,46 @@
 
   Commit message: `feat(design): add arcade cabinet preview`
 
-### Task 4: Publish the review page
+### Task 4: NESBOX wordmark design preview
+
+**Files:**
+- Create: `app/components/NesboxWordmark.tsx`
+- Create: `app/components/NesboxWordmark.test.tsx`
+- Create: `app/routes/design.nesbox-logo.tsx`
+- Modify: `app/routes.ts`
+- Modify: `app/app.css`
+
+**Interfaces:**
+- Produces: accessible inline SVG wordmark and review route `/design/nesbox-logo`.
+- Consumes: existing NESBOX palette and responsive page shell only.
+
+- [ ] **Step 1: Write and run the wordmark contract test**
+
+  Assert that the vector exposes an accessible NESBOX label, six authored
+  glyphs, and no legacy `Game Library` text.
+
+- [ ] **Step 2: Implement the vector and review contexts**
+
+  Show the primary two-color mark, a realistic library-header scale, and
+  dark/light one-color variants. Keep the live header unchanged.
+
+- [ ] **Step 3: Verify responsive rendering**
+
+  Run focused tests and typecheck, then review 1440×1000 and 390×844 browser
+  captures. Require no horizontal overflow or console errors.
+
+- [ ] **Step 4: Commit**
+
+  Commit message: `feat(design): add NESBOX wordmark preview`
+
+### Task 5: Publish the review pages
 
 **Files:**
 - No source changes expected.
 
 **Interfaces:**
-- Consumes: the production build from Task 3.
-- Produces: PM2-served review URL at `/design/arcade-cabinet`.
+- Consumes: the production build from Tasks 3 and 4.
+- Produces: PM2-served review URLs at `/design/arcade-cabinet` and `/design/nesbox-logo`.
 
 - [ ] **Step 1: Run final verification**
 
@@ -174,7 +207,7 @@
 
 - [ ] **Step 3: Smoke-test the deployed route**
 
-  Verify `/design/arcade-cabinet` returns 200 and repeat the desktop browser
+  Verify both design routes return 200 and repeat the desktop browser
   assertions against port 3757.
 
 - [ ] **Step 4: Hand off for visual review**
