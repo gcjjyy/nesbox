@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, FolderInput, Maximize, Save } from "lucide-react";
+import { ArrowLeft, FolderInput, Maximize, RotateCcw, Save } from "lucide-react";
 import { useNavigate } from "react-router";
 import type { Route } from "./+types/play.$gameId";
 import { EmulatorStage, type EmulatorStageHandle } from "../components/EmulatorStage";
@@ -108,6 +108,10 @@ export default function Play({ loaderData }: Route.ComponentProps) {
         </button>
         <strong>{activeGame.title}</strong>
         <div className="player-command-bar__actions">
+          <button type="button" className="player-command player-command--state" onClick={() => stageRef.current?.reset()} title="게임 리셋">
+            <RotateCcw size={16} strokeWidth={1.9} aria-hidden />
+            리셋
+          </button>
           <button type="button" className="player-command player-command--state" onClick={saveState} title="상태 저장">
             <Save size={16} strokeWidth={1.9} aria-hidden />
             저장

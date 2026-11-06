@@ -379,11 +379,15 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     onStatus("실행 중");
   }
 
+  // 실기의 리셋 버튼처럼 처음부터 다시 돌린다. 일시정지 중이었어도 바로 실행한다.
   function reset() {
-    coreRef.current?.reset();
-    setPhase("ready");
-    onRunningChange(false);
-    onStatus("리셋 완료");
+    const core = coreRef.current;
+    if (!core || (phase !== "running" && phase !== "paused")) return;
+    core.reset();
+    if (phase === "paused") core.resume();
+    setPhase("running");
+    onRunningChange(true);
+    onStatus("리셋했습니다.");
   }
 
   async function saveState() {
