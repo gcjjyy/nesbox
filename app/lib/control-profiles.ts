@@ -11,6 +11,16 @@ export interface ControlGuideRow {
   keys: string[];
 }
 
+export interface ControlBindingRow {
+  button: NesboxButton;
+  label: string;
+}
+
+export type KeyAssignmentResult =
+  | { kind: "assigned"; bindings: KeyboardBindings }
+  | { kind: "cancelled"; bindings: KeyboardBindings }
+  | { kind: "rejected"; reason: "collision" | "reserved" | "unsupported"; message: string; bindings: KeyboardBindings };
+
 const NES_BUTTONS = ["up", "down", "left", "right", "select", "start", "b", "a"] as const satisfies readonly NesboxButton[];
 const MAME_BUTTONS = [
   "up", "down", "left", "right", "select", "start", "b", "y", "a", "x", "l", "r",
@@ -136,6 +146,67 @@ export function controlGuideRows(profile: ControlProfileId, bindings: KeyboardBi
   return rows;
 }
 
+export function controlBindingRows(profile: ControlProfileId): ControlBindingRow[] {
+  const directions: ControlBindingRow[] = [
+    { button: "up", label: "위" },
+    { button: "down", label: "아래" },
+    { button: "left", label: "왼쪽" },
+    { button: "right", label: "오른쪽" },
+  ];
+  if (profile === "nes") {
+    return [
+      ...directions,
+      { button: "select", label: "Select" },
+      { button: "start", label: "Start" },
+      { button: "b", label: "B" },
+      { button: "a", label: "A" },
+    ];
+  }
+  return [
+    ...directions,
+    { button: "select", label: "Coin" },
+    { button: "start", label: "Start" },
+    ...(["b", "y", "a", "x", "l", "r"] as const).map((button, index) => ({
+      button,
+      label: `버튼 ${index + 1}`,
+    })),
+  ];
+}
+
+export function assignKey(
+  bindings: KeyboardBindings,
+  profile: ControlProfileId,
+  button: NesboxButton,
+  code: string,
+): KeyAssignmentResult {
+  if (code === "Escape") return { kind: "cancelled", bindings };
+  if (/^(?:Control|Alt|Meta)(?:Left|Right)$/.test(code)) {
+    return { kind: "rejected", reason: "reserved", message: "Ctrl, Alt, Meta 키는 지정할 수 없습니다.", bindings };
+  }
+  if (!isBindableKeyboardCode(code)) {
+    return { kind: "rejected", reason: "unsupported", message: "인식할 수 없는 키입니다.", bindings };
+  }
+  for (const candidate of buttonsForProfile(profile)) {
+    if (candidate !== button && (bindings[profile][candidate] ?? []).includes(code)) {
+      return {
+        kind: "rejected",
+        reason: "collision",
+        message: `${keyCodeLabel(code)} 키는 이 프로필의 다른 동작에 사용 중입니다.`,
+        bindings,
+      };
+    }
+  }
+  const next = cloneBindings(bindings);
+  next[profile][button] = [code];
+  return { kind: "assigned", bindings: next };
+}
+
+export function resetKeyProfile(bindings: KeyboardBindings, profile: ControlProfileId): KeyboardBindings {
+  const next = cloneBindings(bindings);
+  next[profile] = cloneProfile(DEFAULT_KEY_BINDINGS[profile], profile);
+  return next;
+}
+
 export function normalizeKeyboardBindings(value: unknown): KeyboardBindings {
   const object = isRecord(value) ? value : {};
   return {
@@ -257,7 +328,27 @@ function cloneProfile(bindings: ControlBindings, profile: ControlProfileId): Con
 }
 
 function validCodes(value: unknown): value is string[] {
-  return Array.isArray(value) && value.length > 0 && value.every((code) => typeof code === "string" && code.length > 0);
+  return Array.isArray(value) && value.length > 0 && value.every(
+    (code) => typeof code === "string" && isBindableKeyboardCode(code),
+  );
+}
+
+function cloneBindings(bindings: KeyboardBindings): KeyboardBindings {
+  return {
+    nes: cloneProfile(bindings.nes, "nes"),
+    mame: cloneProfile(bindings.mame, "mame"),
+  };
+}
+
+function isBindableKeyboardCode(code: string): boolean {
+  if (/^(?:Key[A-Z]|Digit[0-9]|Numpad[0-9]|F(?:[1-9]|1[0-2]))$/.test(code)) return true;
+  return new Set([
+    "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+    "Enter", "NumpadEnter", "Space", "Tab", "Backspace", "Delete", "Insert", "Home", "End", "PageUp", "PageDown",
+    "ShiftLeft", "ShiftRight", "ControlLeft", "ControlRight", "AltLeft", "AltRight", "MetaLeft", "MetaRight",
+    "Backquote", "Minus", "Equal", "BracketLeft", "BracketRight", "Backslash", "Semicolon", "Quote", "Comma", "Period", "Slash",
+    "NumpadAdd", "NumpadSubtract", "NumpadMultiply", "NumpadDivide", "NumpadDecimal",
+  ]).has(code);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -38,6 +38,7 @@ export interface EmulatorStageHandle {
 
 export interface EmulatorStageProps {
   settings: UserSettings;
+  inputSuspended: boolean;
   onPhaseChange: (phase: EmulatorPhase) => void;
   onStatus: (status: string) => void;
   onRunningChange: (running: boolean) => void;
@@ -73,7 +74,7 @@ function screenSizeForSystem(system: SystemId) {
   return SCREEN_SIZES.nes;
 }
 
-export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChange, onSavedStateChange, ref }: EmulatorStageProps) {
+export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatus, onRunningChange, onSavedStateChange, ref }: EmulatorStageProps) {
   const shellRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const emulatorJsHostRef = useRef<HTMLDivElement | null>(null);
@@ -88,6 +89,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   const gamepadButtonsRef = useRef(new Set<NesboxButton>());
   const settingsRef = useRef(settings);
   const inputProfileRef = useRef<ControlProfileId>("nes");
+  const inputSuspendedRef = useRef(inputSuspended);
   const keyboardRouterRef = useRef<KeyboardInputRouter | null>(null);
   const gamepadTrackerRef = useRef<PressedInputTracker | null>(null);
   const fetchAbortRef = useRef<AbortController | null>(null);
@@ -107,6 +109,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   const audioState = useAudioSessionState();
   const audioPromptVisible = screenSystem !== "arcade" && audioPromptRequired(phase === "running", audioState);
   settingsRef.current = settings;
+  inputSuspendedRef.current = inputSuspended;
 
   if (!keyboardRouterRef.current) {
     keyboardRouterRef.current = createKeyboardInputRouter({
@@ -115,7 +118,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
         inputProfileRef.current,
       ).get(code),
       send: (button, pressed) => coreRef.current?.setButton(0, button, pressed),
-      isSuspended: () => false,
+      isSuspended: () => inputSuspendedRef.current,
     });
   }
   if (!gamepadTrackerRef.current) {
@@ -137,6 +140,10 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   useEffect(() => {
     coreRef.current?.setVolume(settings.volume);
   }, [settings.volume]);
+
+  useEffect(() => {
+    if (inputSuspended) releaseAllTrackedInput();
+  }, [inputSuspended]);
 
   useEffect(() => {
     onPhaseChange(phase);
@@ -175,7 +182,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
       const next = new Set<NesboxButton>();
       const gamepads = navigator.getGamepads?.() ?? [];
       const gamepad = Array.from(gamepads).find((item): item is Gamepad => Boolean(item));
-      if (gamepad) {
+      if (gamepad && !inputSuspendedRef.current) {
         for (const [index, button] of gamepadMapForProfile(inputProfileRef.current)) {
           setGamepadButton(next, button, Boolean(gamepad.buttons[index]?.pressed));
         }
@@ -592,6 +599,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   }
 
   function onTouchButton(button: NesboxButton, pressed: boolean) {
+    if (inputSuspendedRef.current) return;
     coreRef.current?.setButton(0, button, pressed);
   }
 
@@ -668,7 +676,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
         </div>
       </div>
       <TouchControls
-        enabled={settings.touchControls && touchSurface}
+        enabled={settings.touchControls && touchSurface && !inputSuspended}
         running={phase === "running"}
         profile={inputProfile}
         onButton={onTouchButton}

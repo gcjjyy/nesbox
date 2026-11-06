@@ -129,6 +129,7 @@ export default function Play({ loaderData }: Route.ComponentProps) {
         <EmulatorStage
           ref={stageRef}
           settings={settings}
+          inputSuspended={settingsOpen}
           onPhaseChange={() => undefined}
           onStatus={setStatus}
           onRunningChange={setRunning}

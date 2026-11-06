@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { GameEntry } from "./game-types";
 import {
   DEFAULT_KEY_BINDINGS,
+  assignKey,
   controlProfileForGame,
   controlGuideRows,
   createKeyboardInputRouter,
@@ -10,6 +11,7 @@ import {
   keyboardMapForProfile,
   keyCodeLabel,
   normalizeKeyboardBindings,
+  resetKeyProfile,
 } from "./control-profiles";
 
 describe("control profiles", () => {
@@ -157,6 +159,79 @@ describe("keyboard input router", () => {
     router.keyUp(event("ShiftRight"));
 
     expect(send.mock.calls).toEqual([["select", true], ["select", false]]);
+  });
+
+  it("resolves the latest bindings on the next event without rebuilding the router", () => {
+    const send = vi.fn();
+    let bindings = normalizeKeyboardBindings(DEFAULT_KEY_BINDINGS);
+    const router = createKeyboardInputRouter({
+      resolveButton: (code) => keyboardMapForProfile(bindings, "nes").get(code),
+      send,
+      isSuspended: () => false,
+    });
+    const event = (code: string) => ({ code, target: null, preventDefault: vi.fn() });
+
+    router.keyDown(event("KeyZ"));
+    router.keyUp(event("KeyZ"));
+    const assigned = assignKey(bindings, "nes", "b", "KeyQ");
+    if (assigned.kind !== "assigned") throw new Error("fixture assignment failed");
+    bindings = assigned.bindings;
+    router.keyDown(event("KeyZ"));
+    router.keyDown(event("KeyQ"));
+
+    expect(send.mock.calls).toEqual([["b", true], ["b", false], ["b", true]]);
+  });
+});
+
+describe("keyboard assignment", () => {
+  it("replaces one action immutably and permits the same code in another profile", () => {
+    const input = normalizeKeyboardBindings(DEFAULT_KEY_BINDINGS);
+    const snapshot = structuredClone(input);
+
+    const result = assignKey(input, "nes", "b", "KeyD");
+
+    expect(result).toEqual(expect.objectContaining({ kind: "assigned" }));
+    expect(result.bindings.nes.b).toEqual(["KeyD"]);
+    expect(result.bindings.mame.r).toEqual(["KeyD"]);
+    expect(input).toEqual(snapshot);
+    expect(result.bindings).not.toBe(input);
+  });
+
+  it("rejects a same-profile collision without mutation", () => {
+    const input = normalizeKeyboardBindings(DEFAULT_KEY_BINDINGS);
+    const result = assignKey(input, "nes", "a", "KeyZ");
+
+    expect(result).toEqual(expect.objectContaining({ kind: "rejected", reason: "collision", bindings: input }));
+    expect(input.nes.a).toEqual(["KeyX"]);
+  });
+
+  it.each(["ControlLeft", "ControlRight", "AltLeft", "AltRight", "MetaLeft", "MetaRight"])(
+    "rejects reserved modifier %s",
+    (code) => {
+      expect(assignKey(DEFAULT_KEY_BINDINGS, "nes", "a", code)).toEqual(
+        expect.objectContaining({ kind: "rejected", reason: "reserved" }),
+      );
+    },
+  );
+
+  it("treats Escape as cancellation and rejects unknown codes", () => {
+    expect(assignKey(DEFAULT_KEY_BINDINGS, "nes", "a", "Escape")).toEqual(
+      expect.objectContaining({ kind: "cancelled", bindings: DEFAULT_KEY_BINDINGS }),
+    );
+    expect(assignKey(DEFAULT_KEY_BINDINGS, "nes", "a", "MysteryKey")).toEqual(
+      expect.objectContaining({ kind: "rejected", reason: "unsupported" }),
+    );
+    expect(normalizeKeyboardBindings({ nes: { a: ["MysteryKey"] } }).nes.a).toEqual(["KeyX"]);
+  });
+
+  it("resets only the selected profile without mutating custom bindings", () => {
+    const custom = normalizeKeyboardBindings({ nes: { b: ["KeyQ"] }, mame: { r: ["Numpad6"] } });
+    const reset = resetKeyProfile(custom, "nes");
+
+    expect(reset.nes).toEqual(DEFAULT_KEY_BINDINGS.nes);
+    expect(reset.mame.r).toEqual(["Numpad6"]);
+    expect(custom.nes.b).toEqual(["KeyQ"]);
+    expect(reset).not.toBe(custom);
   });
 });
 

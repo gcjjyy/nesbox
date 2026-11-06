@@ -1734,6 +1734,8 @@ button {
 
 .settings-sheet {
   width: min(420px, 100%);
+  max-height: min(760px, calc(100dvh - 32px));
+  overflow: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -1741,11 +1743,15 @@ button {
 }
 
 .settings-sheet header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 14px;
   border-bottom: 1px solid var(--line);
+  background: var(--panel);
 }
 
 .settings-sheet h2 {
@@ -1782,6 +1788,102 @@ button {
 
 .setting-row--switch {
   grid-template-columns: 1fr auto;
+}
+
+.keyboard-settings {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.keyboard-settings__heading {
+  display: grid;
+  gap: 5px;
+}
+
+.keyboard-settings__heading > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--cream);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.keyboard-settings__heading small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.key-profile {
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.key-profile legend {
+  padding: 0 6px;
+  color: var(--red-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.key-profile__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.key-binding-row {
+  display: grid;
+  grid-template-columns: minmax(52px, auto) minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+}
+
+.key-binding-row > span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.key-binding-button,
+.key-profile__reset {
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.key-binding-button--capturing {
+  border-color: var(--red-2);
+  background: color-mix(in srgb, var(--red) 25%, var(--panel-2));
+  color: #fff;
+}
+
+.key-profile__reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 0 9px;
+}
+
+.keyboard-settings__error {
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--red) 68%, var(--line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--red) 14%, transparent);
+  color: var(--red-2);
+  font-size: 12px;
 }
 
 .error-page {
