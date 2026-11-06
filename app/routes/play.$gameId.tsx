@@ -93,7 +93,6 @@ export default function Play({ loaderData }: Route.ComponentProps) {
         running={running}
         hasRom
         onBackToLibrary={backToLibrary}
-        onOpen={backToLibrary}
         onRunToggle={() => stageRef.current?.toggleRun()}
         onReset={() => stageRef.current?.reset()}
         onSave={saveState}

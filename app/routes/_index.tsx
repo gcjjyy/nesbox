@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import type { Route } from "./+types/_index";
 import { GameLibrary } from "../components/GameLibrary";
@@ -6,11 +6,7 @@ import { HelpDialog } from "../components/HelpDialog";
 import { WelcomeDialog } from "../components/WelcomeDialog";
 import { SettingsSheet } from "../components/SettingsSheet";
 import { Toolbar } from "../components/Toolbar";
-import {
-  importOpenEmuGames,
-  listGames as listClientGames,
-  uploadGame,
-} from "../lib/library-client";
+import { listGames as listClientGames } from "../lib/library-client";
 import type { GameEntry } from "../lib/game-types";
 import { readRecentPlays, recentGames, type RecentPlay } from "../lib/recent-plays";
 import { SITE_NAME } from "../lib/site-metadata";
@@ -28,19 +24,15 @@ export function meta(_: Route.MetaArgs) {
 }
 
 export async function loader() {
-  const { importOpenEmuGames: importOpenEmuGamesServer, listGames: listServerGames } = await import("../lib/library.server");
-  const existing = listServerGames();
-  const games = existing.length > 0 ? existing : importOpenEmuGamesServer().games;
-  return { games };
+  const { listGames: listServerGames } = await import("../lib/library.server");
+  return { games: listServerGames() };
 }
 
 export default function Index({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const [games, setGames] = useState<GameEntry[]>(loaderData.games);
   const [recentPlays, setRecentPlays] = useState<RecentPlay[]>([]);
   const recent = useMemo(() => recentGames(games, recentPlays), [games, recentPlays]);
-  const [importing, setImporting] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<UserSettings>(() => readSettings());
@@ -67,33 +59,6 @@ export default function Index({ loaderData }: Route.ComponentProps) {
     writeSettings(next);
   }
 
-  async function onFilePicked(file: File | null) {
-    if (!file) return;
-    try {
-      const game = await uploadGame(file);
-      await refreshGames();
-      setStatus(`${game.title} 등록 완료`);
-    } catch (err) {
-      setStatus(err instanceof Error ? err.message : String(err));
-    } finally {
-      if (inputRef.current) inputRef.current.value = "";
-    }
-  }
-
-  async function importFromOpenEmu() {
-    setImporting(true);
-    setStatus("OpenEmu 라이브러리를 SQLite로 가져오는 중");
-    try {
-      const result = await importOpenEmuGames();
-      setGames(result.games);
-      setStatus(`${result.imported}개 게임을 OpenEmu에서 가져왔습니다.`);
-    } catch (err) {
-      setStatus(err instanceof Error ? err.message : String(err));
-    } finally {
-      setImporting(false);
-    }
-  }
-
   return (
     <div className="app-shell">
       <Toolbar
@@ -101,7 +66,6 @@ export default function Index({ loaderData }: Route.ComponentProps) {
         running={false}
         hasRom={false}
         onBackToLibrary={() => undefined}
-        onOpen={() => inputRef.current?.click()}
         onRunToggle={() => undefined}
         onReset={() => undefined}
         onSave={() => undefined}
@@ -113,22 +77,10 @@ export default function Index({ loaderData }: Route.ComponentProps) {
         <GameLibrary
           games={games}
           recent={recent}
-          importing={importing}
           status={status}
-          onAdd={() => inputRef.current?.click()}
-          onImportOpenEmu={() => {
-            importFromOpenEmu().catch((err) => setStatus(err instanceof Error ? err.message : String(err)));
-          }}
           onLaunch={(gameId) => navigate(`/play/${encodeURIComponent(gameId)}`)}
         />
       </main>
-      <input
-        ref={inputRef}
-        className="sr-only"
-        type="file"
-        accept=".nes,.fds,.unf,.unif,.sfc,.smc,.fig,.swc"
-        onChange={(event) => onFilePicked(event.target.files?.[0] ?? null)}
-      />
       <SettingsSheet
         open={settingsOpen}
         settings={settings}

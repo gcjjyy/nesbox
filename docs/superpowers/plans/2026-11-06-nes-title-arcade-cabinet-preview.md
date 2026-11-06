@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Correct NES card title priority, simplify keyboard settings into overview/edit states, and publish review-only upright arcade cabinet and NESBOX wordmark design pages.
+**Goal:** Correct NES card title priority, simplify keyboard settings into overview/edit states, apply a simple NESBOX library brand, and publish a review-only upright arcade cabinet page.
 
 **Architecture:** A pure display helper owns NES primary and secondary card labels without touching stored data. The existing settings modal becomes a two-state overview/editor while retaining the current binding engine. A new React Router route renders an isolated semantic HTML/CSS cabinet preview; the live player remains unchanged.
 
@@ -18,7 +18,6 @@
 - Do not connect the preview to EmulatorJS, ROM loading, or input handlers.
 - Do not add image or UI dependencies.
 - Keep the live MAME player unchanged until the user approves the preview.
-- Keep the live `Game Library` heading unchanged until the user approves the wordmark.
 
 ## Review Focus
 
@@ -152,46 +151,54 @@
 
   Commit message: `feat(design): add arcade cabinet preview`
 
-### Task 4: NESBOX wordmark design preview
+### Task 4: Simple live NESBOX brand and read-only library
 
 **Files:**
-- Create: `app/components/NesboxWordmark.tsx`
-- Create: `app/components/NesboxWordmark.test.tsx`
-- Create: `app/routes/design.nesbox-logo.tsx`
-- Modify: `app/routes.ts`
+- Create: `app/components/GameLibrary.test.tsx`
+- Create: `app/routes/api.games.test.ts`
+- Modify: `app/components/GameLibrary.tsx`
+- Modify: `app/components/Toolbar.tsx`
+- Modify: `app/routes/_index.tsx`
+- Modify: `app/routes/play.$gameId.tsx`
+- Modify: `app/routes/api.games.tsx`
+- Modify: `app/lib/library-client.ts`
+- Modify: `app/lib/library.server.ts`
 - Modify: `app/app.css`
+- Delete: `app/components/NesboxWordmark.tsx`
+- Delete: `app/components/NesboxWordmark.test.tsx`
+- Delete: `app/routes/design.nesbox-logo.tsx`
 
 **Interfaces:**
-- Produces: accessible inline SVG wordmark and review route `/design/nesbox-logo`.
-- Consumes: existing NESBOX palette and responsive page shell only.
+- Produces: a live gamepad + NESBOX heading and a read-only game collection API.
+- Removes: rejected wordmark preview, Add/OpenEmu controls, ROM picker, and POST mutations.
 
-- [ ] **Step 1: Write and run the wordmark contract test**
+- [ ] **Step 1: Write and run the brand and read-only API contract tests**
 
-  Assert that the vector exposes an accessible NESBOX label, six authored
-  glyphs, and no legacy `Game Library` text.
+  Assert that the library exposes the NESBOX brand without legacy import
+  controls, and that POST `/api/games` returns 405 with `Allow: GET`.
 
-- [ ] **Step 2: Implement the vector and review contexts**
+- [ ] **Step 2: Apply the simple brand and remove mutation paths**
 
-  Show the primary two-color mark, a realistic library-header scale, and
-  dark/light one-color variants. Keep the live header unchanged.
+  Use the existing gamepad icon with plain NESBOX text. Remove rejected preview
+  sources, file inputs, client calls, toolbar ROM-open control, and server mutations.
 
-- [ ] **Step 3: Verify responsive rendering**
+- [ ] **Step 3: Verify the live library**
 
-  Run focused tests and typecheck, then review 1440×1000 and 390×844 browser
-  captures. Require no horizontal overflow or console errors.
+  Run focused tests and typecheck, then verify the live heading and absence of
+  OpenEmu, Add, and ROM-open controls in a browser.
 
 - [ ] **Step 4: Commit**
 
-  Commit message: `feat(design): add NESBOX wordmark preview`
+  Commit message: `refactor(library): simplify brand and remove imports`
 
-### Task 5: Publish the review pages
+### Task 5: Publish the cabinet review page
 
 **Files:**
 - No source changes expected.
 
 **Interfaces:**
 - Consumes: the production build from Tasks 3 and 4.
-- Produces: PM2-served review URLs at `/design/arcade-cabinet` and `/design/nesbox-logo`.
+- Produces: the live simple brand and PM2-served `/design/arcade-cabinet` review URL.
 
 - [ ] **Step 1: Run final verification**
 
@@ -207,7 +214,7 @@
 
 - [ ] **Step 3: Smoke-test the deployed route**
 
-  Verify both design routes return 200 and repeat the desktop browser
+  Verify `/design/arcade-cabinet` returns 200 and repeat the desktop browser
   assertions against port 3757.
 
 - [ ] **Step 4: Hand off for visual review**

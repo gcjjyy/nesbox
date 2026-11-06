@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { Check, ChevronDown, Clock, Database, LayoutGrid, Play, Plus, Search } from "lucide-react";
+import { Check, ChevronDown, Clock, Gamepad2, LayoutGrid, Play, Search } from "lucide-react";
 import {
   arrangeGames,
   catalogCategoryForGame,
@@ -25,19 +25,15 @@ import {
 export interface GameLibraryProps {
   games: GameEntry[];
   recent: { game: GameEntry; playedAt: number }[];
-  importing: boolean;
   status: string;
-  onAdd: () => void;
-  onImportOpenEmu: () => void;
   onLaunch: (gameId: string) => void;
 }
 
 type Tab = "all" | "recent";
 
-const ICON = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
 const SMALL_ICON = { size: 14, strokeWidth: 2, "aria-hidden": true } as const;
 
-export function GameLibrary({ games, recent, importing, status, onAdd, onImportOpenEmu, onLaunch }: GameLibraryProps) {
+export function GameLibrary({ games, recent, status, onLaunch }: GameLibraryProps) {
   const [tab, setTab] = useState<Tab>("all");
   const [category, setCategory] = useState<CatalogCategory>("all");
   const [sort, setSort] = useState<CatalogSort>("title");
@@ -53,18 +49,13 @@ export function GameLibrary({ games, recent, importing, status, onAdd, onImportO
     <section className="game-library" aria-label="게임 라이브러리">
       <header className="game-library__header">
         <div className="game-library__heading">
-          <h1>Game Library</h1>
+          <h1 aria-label="NESBOX">
+            <span className="game-library__brand-icon" aria-hidden>
+              <Gamepad2 size={24} strokeWidth={1.8} />
+            </span>
+            <span>NESBOX</span>
+          </h1>
           <p>{games.length} games · {status}</p>
-        </div>
-        <div className="game-library__buttons">
-          <button type="button" className="library-add" onClick={onImportOpenEmu} disabled={importing}>
-            <Database {...ICON} />
-            OpenEmu
-          </button>
-          <button type="button" className="library-add" onClick={onAdd}>
-            <Plus {...ICON} />
-            Add
-          </button>
         </div>
       </header>
 
@@ -120,7 +111,7 @@ export function GameLibrary({ games, recent, importing, status, onAdd, onImportO
             {games.length === 0 ? (
               <>
                 <strong>No games</strong>
-                <span>OpenEmu에서 가져오거나 ROM을 추가하면 SQLite 라이브러리에 저장됩니다.</span>
+                <span>등록된 게임이 없습니다.</span>
               </>
             ) : tab === "recent" && recent.length === 0 && !query && category === "all" ? (
               <>

@@ -2,7 +2,7 @@ import { index, route, type RouteConfig } from "@react-router/dev/routes";
 
 export default [
   index("routes/_index.tsx"),
-  route("design/nesbox-logo", "routes/design.nesbox-logo.tsx"),
+  route("design/arcade-cabinet", "routes/design.arcade-cabinet.tsx"),
   route("play/:gameId", "routes/play.$gameId.tsx"),
   route("api/games", "routes/api.games.tsx"),
   route("api/games/:gameId", "routes/api.games.$gameId.tsx"),

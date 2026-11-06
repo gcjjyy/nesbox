@@ -1,19 +1,12 @@
 import Database from "better-sqlite3";
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { defaultEmulatorForFile } from "./emulator-registry";
-import { extensionOf } from "./rom";
 import type { GameEntry, StoredGame } from "./game-types";
 
 export const DATA_DIR = process.env.NESBOX_DATA_DIR ?? path.join(process.cwd(), "data");
 const ROM_DIR = path.join(DATA_DIR, "roms");
 export const COVER_DIR = path.join(DATA_DIR, "covers");
 const DB_PATH = process.env.NESBOX_DB_PATH ?? path.join(DATA_DIR, "nesbox.sqlite");
-const OPENEMU_ROMS_DIR =
-  process.env.NESBOX_OPENEMU_ROMS_DIR ??
-  path.join(process.env.HOME ?? "", "Library/Application Support/OpenEmu/Game Library/roms");
-
 let db: Database.Database | null = null;
 
 interface GameRow {
@@ -96,52 +89,6 @@ export function setGamePinned(gameId: string, pinned: boolean): void {
   getLibraryDb().prepare("UPDATE games SET pinned = ? WHERE id = ?").run(pinned ? 1 : 0, gameId);
 }
 
-export function importOpenEmuGames(): { imported: number; games: GameEntry[] } {
-  const files = existsSync(OPENEMU_ROMS_DIR) ? walkRomFiles(OPENEMU_ROMS_DIR) : [];
-  let imported = 0;
-  for (const filePath of files) {
-    if (upsertGameFromPath(filePath)) imported += 1;
-  }
-  return { imported, games: listGames() };
-}
-
-export function saveUploadedGame(fileName: string, bytes: Uint8Array): StoredGame {
-  const profile = defaultEmulatorForFile(fileName);
-  if (!profile) throw new Error(`unsupported ROM: ${fileName}`);
-  const hash = sha1(bytes);
-  const ext = extensionOf(fileName);
-  const safeName = `${hash}.${ext}`;
-  const romPath = path.join(ROM_DIR, safeName);
-  writeFileSync(romPath, bytes);
-  return upsertGame({
-    id: `${profile.system}:${profile.id}:${hash}`,
-    title: titleFromFileName(fileName),
-    fileName,
-    system: profile.system,
-    emulatorId: profile.id,
-    size: bytes.byteLength,
-    romPath,
-  });
-}
-
-function upsertGameFromPath(romPath: string): boolean {
-  const profile = defaultEmulatorForFile(romPath);
-  if (!profile) return false;
-  const bytes = readFileSync(romPath);
-  upsertGame({
-    id: `${profile.system}:${profile.id}:${sha1(bytes)}`,
-    title: titleFromFileName(path.basename(romPath)),
-    fileName: path.basename(romPath),
-    system: profile.system,
-    emulatorId: profile.id,
-    size: bytes.byteLength,
-    romPath,
-  });
-  return true;
-}
-
-type GameInput = Omit<StoredGame, "addedAt" | "lastPlayedAt" | "originalTitle" | "hasCover" | "pinned" | "coverPath">;
-
 export interface ImportGameRecord {
   id: string;
   title: string;
@@ -186,55 +133,6 @@ export function importGamesAtomic(
   insert(records);
 }
 
-function upsertGame(input: GameInput): StoredGame {
-  const now = Date.now();
-  getLibraryDb()
-    .prepare(`
-      INSERT INTO games (id, title, file_name, system, emulator_id, size, rom_path, added_at, last_played_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)
-      ON CONFLICT(id)
-      DO UPDATE SET
-        title = excluded.title,
-        file_name = excluded.file_name,
-        system = excluded.system,
-        emulator_id = excluded.emulator_id,
-        size = excluded.size,
-        rom_path = excluded.rom_path
-    `)
-    .run(
-      input.id,
-      input.title,
-      input.fileName,
-      input.system,
-      input.emulatorId,
-      input.size,
-      input.romPath,
-      now,
-    );
-  const game = getGame(input.id);
-  if (!game) throw new Error("failed to save game");
-  return game;
-}
-
-function walkRomFiles(root: string): string[] {
-  const out: string[] = [];
-  const stack = [root];
-  while (stack.length > 0) {
-    const dir = stack.pop();
-    if (!dir) continue;
-    for (const name of readdirSync(dir)) {
-      const full = path.join(dir, name);
-      const st = statSync(full);
-      if (st.isDirectory()) {
-        stack.push(full);
-      } else if (st.isFile() && defaultEmulatorForFile(full)) {
-        out.push(full);
-      }
-    }
-  }
-  return out.sort((a, b) => a.localeCompare(b));
-}
-
 function rowToGame(row: GameRow): GameEntry {
   return {
     id: row.id,
@@ -257,12 +155,4 @@ function rowToStoredGame(row: GameRow): StoredGame {
     romPath: row.rom_path,
     coverPath: row.cover_path,
   };
-}
-
-function titleFromFileName(fileName: string): string {
-  return path.basename(fileName).replace(/\.[^.]+$/, "");
-}
-
-function sha1(bytes: Uint8Array): string {
-  return createHash("sha1").update(bytes).digest("hex");
 }
