@@ -45,7 +45,7 @@ export function ArcadeCabinetPreview({ cover, title = "MAME" }: { cover?: string
       <rect x="237" y="29" width="586" height="445" rx="38" fill="#030806" stroke="#020504" strokeWidth="8"/>
       <g className="arcade-grid-machine__screen" clipPath={paint("screen")}>
         <rect x="248" y="40" width="564" height="423" fill="#07120e"/>
-        {cover ? <image href={cover} x="248" y="40" width="564" height="423" preserveAspectRatio="xMidYMid meet"/> :
+        {cover ? <image href={cover} x="248" y="40" width="564" height="423" preserveAspectRatio="none"/> :
           <text x="530" y="263" textAnchor="middle" fill="#c5d5ab" fontSize="30" fontFamily="monospace">INSERT COIN</text>}
         <rect x="248" y="40" width="564" height="423" fill={paint("lines")}/>
         <rect x="248" y="40" width="564" height="423" fill={paint("glass")}/>
