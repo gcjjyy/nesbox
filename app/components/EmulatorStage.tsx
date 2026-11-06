@@ -97,6 +97,7 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
   const fetchAbortRef = useRef<AbortController | null>(null);
   const [phase, setPhase] = useState<EmulatorPhase>("idle");
   const [audioUnlocking, setAudioUnlocking] = useState(false);
+  const [arcadeAudioRunning, setArcadeAudioRunning] = useState(false);
   const [loadProgress, setLoadProgress] = useState<GameLoadProgress>({ label: "게임 준비 중", percent: null });
   const [screenSystem, setScreenSystem] = useState<SystemId>("nes");
   const [inputProfile, setInputProfile] = useState<ControlProfileId>("nes");
@@ -104,7 +105,8 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
   const [touchSurface, setTouchSurface] = useState(false);
   const [hasSavedState, setHasSavedState] = useState(false);
   const audioState = useAudioSessionState();
-  const audioPromptVisible = screenSystem !== "arcade" && audioPromptRequired(phase === "running", audioState);
+  const activeAudioState = screenSystem === "arcade" ? (arcadeAudioRunning ? "running" : "locked") : audioState;
+  const audioPromptVisible = audioPromptRequired(phase === "running", activeAudioState);
   settingsRef.current = settings;
   inputSuspendedRef.current = inputSuspended;
 
@@ -275,6 +277,7 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
     coreRef.current = null;
     gameRef.current = null;
     setAudioUnlocking(false);
+    setArcadeAudioRunning(false);
     if (core) disposeOwnedCore(core);
     if (!updateUi) return;
     switchInputProfile("nes");
@@ -365,6 +368,9 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
     try {
       core = await createCore(game.emulatorId, {
         canvas, hostElement,
+        onAudioState: (running) => {
+          if (!isStaleLoad(seq)) setArcadeAudioRunning(running);
+        },
         onRuntimeStatus: (message) => {
           if (!isStaleLoad(seq)) onStatus(message);
         },
@@ -527,6 +533,11 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
       !disposedRef.current
     );
     try {
+      if (gameRef.current?.system === "arcade") {
+        const unlocked = await coreRef.current?.unlockAudio?.() ?? false;
+        if (isAttemptCurrent()) onStatus(audioUnlockStatus(unlocked));
+        return;
+      }
       const pendingRecovery = audioRecoveryRef.current;
       const recoveryMatchesCurrentGame = Boolean(
         pendingRecovery &&

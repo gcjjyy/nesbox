@@ -5,16 +5,18 @@ import { takeArcadeAudio } from "./arcade-audio";
 import { watchArcadeHealth } from "./arcade-health";
 
 const DATA_PATH = "/emulatorjs/data/";
-const RETROPAD_INDEX: Record<NesboxButton, number> = {
+// App action slots b/y/a are buttons 1/2/3. Classic arcade cores expect B/A/Y,
+// so translate here while preserving saved keyboard mappings and touch labels.
+const ARCADE_INPUT_INDEX: Record<NesboxButton, number> = {
   b: 0,
-  y: 1,
+  y: 8,
   select: 2,
   start: 3,
   up: 4,
   down: 5,
   left: 6,
   right: 7,
-  a: 8,
+  a: 1,
   x: 9,
   l: 10,
   r: 11,
@@ -30,6 +32,7 @@ export interface EmulatorJsMountConfig {
   signal?: AbortSignal;
   onProgress?: (progress: GameLoadProgress) => void;
   onRuntimeStatus?: (message: string) => void;
+  onAudioState?: (running: boolean) => void;
 }
 
 export interface EmulatorJsInstance {
@@ -37,6 +40,7 @@ export interface EmulatorJsInstance {
   resume: () => void;
   reset: () => void;
   setVolume: (volume: number) => void;
+  unlockAudio?: () => Promise<boolean>;
   setInput: (player: number, index: number, pressed: boolean) => void;
   saveState: () => Promise<Uint8Array>;
   loadState: (state: Uint8Array) => Promise<void>;
@@ -53,6 +57,7 @@ export async function createEmulatorJsCore(
   bridge: EmulatorJsBridge = browserEmulatorJsBridge,
   onProgress?: (progress: GameLoadProgress) => void,
   onRuntimeStatus?: (message: string) => void,
+  onAudioState?: (running: boolean) => void,
 ): Promise<NesboxCore> {
   if (profile.runtime !== "emulatorjs" || !profile.coreName) {
     throw new Error(`${profile.id} 프로필은 EmulatorJS 아케이드 코어가 아닙니다.`);
@@ -117,6 +122,9 @@ export async function createEmulatorJsCore(
           dataPath: DATA_PATH,
           volume: currentVolume,
           signal: mountAbort.signal,
+          onAudioState: (running) => {
+            if (!disposed) onAudioState?.(running);
+          },
           onRuntimeStatus: (message) => {
             if (!disposed) onRuntimeStatus?.(message);
           },
@@ -139,6 +147,9 @@ export async function createEmulatorJsCore(
     pause() {
       instance?.pause();
     },
+    async unlockAudio() {
+      return await instance?.unlockAudio?.() ?? false;
+    },
     resume() {
       instance?.resume();
     },
@@ -149,7 +160,7 @@ export async function createEmulatorJsCore(
       instance?.pause();
     },
     setButton(player, button, isPressed) {
-      const index = RETROPAD_INDEX[button];
+      const index = ARCADE_INPUT_INDEX[button];
       const key = `${player}:${index}`;
       if (isPressed) pressed.set(key, { player, index });
       else pressed.delete(key);
@@ -279,8 +290,7 @@ export const browserEmulatorJsBridge: EmulatorJsBridge = {
           #game .ejs_parent,#game .ejs_game,#game .ejs_canvas_parent,#game .ejs_canvas { width:100%!important; height:100%!important; }
           .ejs_canvas { object-fit:contain; image-rendering:pixelated; }
           .ejs_menu_bar,.ejs_context_menu,.ejs_virtualGamepad_parent,.ejs_virtualGamepad_open { display:none!important; }
-          #resume-audio { position:absolute; z-index:10000; bottom:20px; left:50%; transform:translateX(-50%); padding:12px 18px; border:1px solid #58615e; border-radius:8px; background:#191f20; color:#fff; cursor:pointer; white-space:nowrap; }
-        </style></head><body><div id="game"></div><button id="resume-audio" hidden>클릭하여 게임 계속하기</button></body></html>`;
+        </style></head><body><div id="game"></div></body></html>`;
         config.hostElement.replaceChildren(frame);
       });
       if (config.signal?.aborted) throw new DOMException("EmulatorJS mount cancelled", "AbortError");
@@ -291,11 +301,9 @@ export const browserEmulatorJsBridge: EmulatorJsBridge = {
         const AudioConstructor = function () { return audio; } as unknown as typeof AudioContext;
         runtimeWindow.AudioContext = AudioConstructor;
         (runtimeWindow as typeof runtimeWindow & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext = AudioConstructor;
-        const prompt = frame.contentDocument!.getElementById("resume-audio")!;
-        audioStateChanged = () => { prompt.hidden = audio.state === "running"; };
+        audioStateChanged = () => config.onAudioState?.(audio.state === "running");
         audio.addEventListener("statechange", audioStateChanged);
         audioStateChanged();
-        prompt.addEventListener("click", resumeAudio);
         window.addEventListener("pointerdown", resumeAudio, true);
         window.addEventListener("keydown", resumeAudio, true);
         runtimeWindow.addEventListener("pointerdown", resumeAudio, true);
@@ -315,9 +323,18 @@ export const browserEmulatorJsBridge: EmulatorJsBridge = {
       runtimeWindow.addEventListener("blur", () => window.dispatchEvent(new Event("blur")));
       const instance = await mountBrowserRuntime({ ...config, hostElement: runtimeHost }, runtimeWindow);
       Object.assign(config.hostElement.dataset, runtimeHost.dataset);
-      return { ...instance, destroy() {
-        try { instance.destroy(); } finally { removeFrame(); }
-      } };
+      return {
+        ...instance,
+        async unlockAudio() {
+          if (!audio || audio.state === "closed") return false;
+          await audio.resume();
+          audioStateChanged();
+          return audio.state === "running";
+        },
+        destroy() {
+          try { instance.destroy(); } finally { removeFrame(); }
+        },
+      };
     } catch (error) {
       removeFrame();
       throw error;

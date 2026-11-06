@@ -45,6 +45,7 @@ export interface CoreMountTargets {
   hostElement: HTMLElement;
   onLoadProgress?: (progress: GameLoadProgress) => void;
   onRuntimeStatus?: (message: string) => void;
+  onAudioState?: (running: boolean) => void;
 }
 
 export interface NesboxCore {
@@ -57,6 +58,7 @@ export interface NesboxCore {
   stop: () => void;
   setButton: (player: number, button: NesboxButton, pressed: boolean) => void;
   setVolume: (volume: number) => void;
+  unlockAudio?: () => Promise<boolean>;
   saveState: () => Promise<Uint8Array>;
   loadState: (state: Uint8Array) => Promise<void>;
   dispose: () => void;

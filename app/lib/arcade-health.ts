@@ -28,7 +28,7 @@ export function watchArcadeHealth(sample: () => ArcadeHealthSample, report: (mes
     const message = state.graphicsLost
       ? '그래픽 연결이 끊겨 게임이 멈췄습니다. 라이브러리에서 다시 실행해 주세요.'
       : state.audio && state.audio !== 'running' && state.audio !== 'closed'
-      ? '오디오 재생이 차단되었습니다. 게임 화면의 계속하기를 눌러 주세요.'
+      ? '오디오 재생이 차단되었습니다. 화면의 “탭하여 음소거 해제”를 눌러 주세요.'
       : stalled >= 5 ? '게임 실행이 멈췄습니다. 라이브러리에서 다시 실행해 주세요.' : '';
     if (message && message !== lastMessage) report(message);
     else if (!message && lastMessage) report('실행 중');

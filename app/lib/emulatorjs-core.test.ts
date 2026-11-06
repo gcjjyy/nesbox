@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { emulatorById } from "./emulator-registry";
+import { DEFAULT_KEY_BINDINGS, keyboardMapForProfile } from "./control-profiles";
 import {
   createEmulatorJsCore,
   type EmulatorJsBridge,
@@ -41,6 +42,39 @@ function fakeInstance(): EmulatorJsInstance {
 }
 
 describe("createEmulatorJsCore", () => {
+  it("exposes arcade audio state and unlock to the shared player prompt, ignoring disposed callbacks", async () => {
+    const audioState = vi.fn();
+    const instance = { ...fakeInstance(), unlockAudio: vi.fn(async () => true) };
+    let mounted!: EmulatorJsMountConfig;
+    const core = await createEmulatorJsCore(emulatorById("mame2003-plus")!, fakeHost(), {
+      mount: async (config) => { mounted = config; return instance; },
+    }, undefined, undefined, audioState);
+    await core.loadRom(new Uint8Array([1]), "ffight.zip");
+    await core.start();
+    mounted.onAudioState?.(false);
+    expect(audioState).toHaveBeenLastCalledWith(false);
+    await expect(core.unlockAudio?.()).resolves.toBe(true);
+    expect(instance.unlockAudio).toHaveBeenCalledOnce();
+    core.dispose();
+    audioState.mockClear();
+    mounted.onAudioState?.(true);
+    expect(audioState).not.toHaveBeenCalled();
+  });
+  it.each(["mame2003-plus", "fbneo"] as const)("maps adjacent Z/X/C keys to the first three classic arcade actions in %s", async (id) => {
+    const instance = fakeInstance();
+    const core = await createEmulatorJsCore(emulatorById(id)!, fakeHost(), { mount: async () => instance });
+    await core.loadRom(new Uint8Array([1]), "ffight.zip");
+    await core.start();
+    const bindings = keyboardMapForProfile(DEFAULT_KEY_BINDINGS, "mame");
+    // The classic core layout is button 1=B (0), 2=A (8), 3=Y (1).
+    for (const [code, index] of [["KeyZ", 0], ["KeyX", 8], ["KeyC", 1]] as const) {
+      core.setButton(0, bindings.get(code)!, true);
+      expect(instance.setInput).toHaveBeenLastCalledWith(0, index, true);
+      core.setButton(0, bindings.get(code)!, false);
+      expect(instance.setInput).toHaveBeenLastCalledWith(0, index, false);
+    }
+    core.dispose();
+  });
   it("forwards startup progress only while the current core is mounting", async () => {
     const mounting = deferred<EmulatorJsInstance>();
     let config!: EmulatorJsMountConfig;
@@ -97,8 +131,9 @@ describe("createEmulatorJsCore", () => {
     expect(instance.reset).toHaveBeenCalledTimes(1);
     expect(instance.setVolume).toHaveBeenCalledWith(0.25);
     expect(instance.setInput).toHaveBeenCalledTimes(12);
+    const indexes = [0, 8, 2, 3, 4, 5, 6, 7, 1, 9, 10, 11];
     buttons.forEach((_button, index) => {
-      expect(instance.setInput).toHaveBeenCalledWith(0, index, true);
+      expect(instance.setInput).toHaveBeenCalledWith(0, indexes[index], true);
     });
     expect(instance.loadState).toHaveBeenCalledWith(new Uint8Array([4, 5]));
 

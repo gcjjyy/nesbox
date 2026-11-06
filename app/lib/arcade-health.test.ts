@@ -6,7 +6,7 @@ it('reports a stalled main loop, distinguishes blocked audio, and stops after di
  const sample={frame:2,paused:false,hidden:false,audio:'running'};
  const stop=watchArcadeHealth(()=>sample,status);
  vi.advanceTimersByTime(7000); expect(status).toHaveBeenCalledWith('게임 실행이 멈췄습니다. 라이브러리에서 다시 실행해 주세요.');
- sample.audio='suspended';vi.advanceTimersByTime(1000);expect(status).toHaveBeenLastCalledWith('오디오 재생이 차단되었습니다. 게임 화면의 계속하기를 눌러 주세요.');
+ sample.audio='suspended';vi.advanceTimersByTime(1000);expect(status).toHaveBeenLastCalledWith('오디오 재생이 차단되었습니다. 화면의 “탭하여 음소거 해제”를 눌러 주세요.');
  stop();status.mockClear();vi.advanceTimersByTime(10000);expect(status).not.toHaveBeenCalled();
 });
 it('does not report intentional pauses, background tabs, or progressing frames', () => {
