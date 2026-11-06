@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Keyboard, Monitor, RotateCcw, Smartphone, Volume2, X } from "lucide-react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { ArrowLeft, Keyboard, Monitor, RotateCcw, Smartphone, Volume2, X } from "lucide-react";
 import type { NesboxButton } from "../lib/core-contract";
 import {
   assignKey,
@@ -9,6 +9,7 @@ import {
   type ControlProfileId,
 } from "../lib/control-profiles";
 import type { UserSettings } from "../lib/storage";
+import { ControlGuideTabs } from "./ControlGuideTabs";
 
 const ICON = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
 
@@ -20,21 +21,37 @@ export interface SettingsSheetProps {
 }
 
 export function SettingsSheet({ open, settings, onChange, onClose }: SettingsSheetProps) {
+  const [editing, setEditing] = useState(false);
+  const [profile, setProfile] = useState<ControlProfileId>("nes");
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const mappingButtonRef = useRef<HTMLButtonElement | null>(null);
   const [capture, setCapture] = useState<{ profile: ControlProfileId; button: NesboxButton } | null>(null);
   const [captureError, setCaptureError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
+      setEditing(false);
       setCapture(null);
       setCaptureError(null);
     }
   }, [open]);
 
   useEffect(() => {
-    if (!open || !capture) return;
+    if (!open) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    return () => previousFocus?.focus();
+  }, [open]);
+
+  useEffect(() => {
+    if (open) headingRef.current?.focus();
+  }, [editing, open]);
+
+  useEffect(() => {
+    if (!open || !editing || !capture) return;
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       event.preventDefault();
       event.stopPropagation();
+      if (event.repeat) return;
       const result = assignKey(settings.keyBindings, capture.profile, capture.button, event.code);
       if (result.kind === "cancelled") {
         setCapture(null);
@@ -49,13 +66,48 @@ export function SettingsSheet({ open, settings, onChange, onClose }: SettingsShe
     };
     window.addEventListener("keydown", onKeyDown, { capture: true });
     return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
-  }, [capture, onChange, open, settings]);
+  }, [capture, editing, onChange, open, settings]);
 
   if (!open) return null;
 
   function startCapture(profile: ControlProfileId, button: NesboxButton) {
     setCapture({ profile, button });
     setCaptureError(null);
+  }
+
+  function selectProfile(next: ControlProfileId) {
+    setProfile(next);
+    setCapture(null);
+    setCaptureError(null);
+  }
+
+  function finishEditing() {
+    setCapture(null);
+    setCaptureError(null);
+    setEditing(false);
+    requestAnimationFrame(() => mappingButtonRef.current?.focus());
+  }
+
+  function onDialogKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (capture) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      if (editing) finishEditing();
+      else onClose();
+    } else if (event.key === "Tab") {
+      const buttons = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled]), [tabindex='0']")]
+        .filter((node) => node.tabIndex >= 0);
+      const first = buttons[0];
+      const last = buttons.at(-1);
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === headingRef.current)) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    }
   }
 
   function resetProfile(profile: ControlProfileId) {
@@ -67,66 +119,85 @@ export function SettingsSheet({ open, settings, onChange, onClose }: SettingsShe
 
   return (
     <div className="sheet-backdrop" role="presentation" onMouseDown={onClose}>
-      <section className="settings-sheet" role="dialog" aria-modal="true" aria-label="설정" onMouseDown={(event) => event.stopPropagation()}>
+      <section className="settings-sheet" role="dialog" aria-modal="true" aria-label={editing ? "키 설정" : "설정"} onMouseDown={(event) => event.stopPropagation()} onKeyDown={onDialogKeyDown}>
         <header>
-          <h2>설정</h2>
+          <div className="settings-sheet__title">
+            {editing && <button type="button" className="icon-button" onClick={finishEditing} aria-label="설정으로 돌아가기"><ArrowLeft {...ICON} /></button>}
+            <h2 ref={headingRef} tabIndex={-1}>{editing ? "키 설정" : "설정"}</h2>
+          </div>
           <button type="button" className="icon-button" onClick={onClose} aria-label="닫기" title="닫기">
             <X {...ICON} />
           </button>
         </header>
-        <label className="setting-row">
-          <span>
-            <Volume2 {...ICON} />
-            볼륨
-          </span>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={settings.volume}
-            onChange={(event) => onChange({ ...settings, volume: Number(event.target.value) })}
-          />
-        </label>
-        <label className="setting-row setting-row--switch">
-          <span>
-            <Monitor {...ICON} />
-            정수 배율
-          </span>
-          <input
-            type="checkbox"
-            checked={settings.integerScale}
-            onChange={(event) => onChange({ ...settings, integerScale: event.target.checked })}
-          />
-        </label>
-        <label className="setting-row setting-row--switch">
-          <span>
-            <Smartphone {...ICON} />
-            터치 버튼
-          </span>
-          <input
-            type="checkbox"
-            checked={settings.touchControls}
-            onChange={(event) => onChange({ ...settings, touchControls: event.target.checked })}
-          />
-        </label>
-        <div className="keyboard-settings">
+        {editing ? <div className="keyboard-settings">
           <div className="keyboard-settings__heading">
-            <span><Keyboard {...ICON} />키보드</span>
-            <small>바꿀 동작을 누른 뒤 새 키를 입력하세요. Esc는 취소합니다.</small>
+            <span><Keyboard {...ICON} />키 매핑 변경</span>
+            <small>바꿀 동작을 누르고 새 키를 입력하세요. 변경 즉시 저장되며, Esc로 키 입력을 취소할 수 있습니다.</small>
           </div>
-          {(["nes", "mame"] as const).map((profile) => (
-            <KeyProfileEditor
-              key={profile}
-              profile={profile}
+          <ControlGuideTabs
+            bindings={settings.keyBindings}
+            activeProfile={profile}
+            onProfileChange={selectProfile}
+            renderPanel={(active) => <KeyProfileEditor
+              profile={active}
               settings={settings}
               capture={capture}
               onCapture={startCapture}
-              onReset={() => resetProfile(profile)}
-            />
-          ))}
+              onReset={() => resetProfile(active)}
+            />}
+          />
           {captureError && <p className="keyboard-settings__error" role="alert">{captureError}</p>}
-        </div>
+          <button type="button" className="keyboard-settings__action" onClick={finishEditing}>완료</button>
+        </div> : <>
+          <label className="setting-row">
+            <span>
+              <Volume2 {...ICON} />
+              볼륨
+            </span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={settings.volume}
+              onChange={(event) => onChange({ ...settings, volume: Number(event.target.value) })}
+            />
+          </label>
+          <label className="setting-row setting-row--switch">
+            <span>
+              <Monitor {...ICON} />
+              정수 배율
+            </span>
+            <input
+              type="checkbox"
+              checked={settings.integerScale}
+              onChange={(event) => onChange({ ...settings, integerScale: event.target.checked })}
+            />
+          </label>
+          <label className="setting-row setting-row--switch">
+            <span>
+              <Smartphone {...ICON} />
+              터치 버튼
+            </span>
+            <input
+              type="checkbox"
+              checked={settings.touchControls}
+              onChange={(event) => onChange({ ...settings, touchControls: event.target.checked })}
+            />
+          </label>
+          <div className="keyboard-settings">
+            <div className="keyboard-settings__heading">
+              <span><Keyboard {...ICON} />키보드</span>
+              <small>현재 설정된 키 배치입니다.</small>
+            </div>
+            <div className="keyboard-settings__preview">
+              <ControlGuideTabs bindings={settings.keyBindings} activeProfile={profile} onProfileChange={selectProfile} />
+            </div>
+            <button ref={mappingButtonRef} type="button" className="keyboard-settings__action" onClick={() => setEditing(true)}>
+              <Keyboard {...ICON} />키 매핑 변경
+            </button>
+          </div>
+        </>}
       </section>
     </div>
   );
@@ -152,7 +223,7 @@ function KeyProfileEditor({
       <div className="key-profile__grid">
         {controlBindingRows(profile).map(({ button, label }) => {
           const capturing = capture?.profile === profile && capture.button === button;
-          const assigned = (settings.keyBindings[profile][button] ?? []).map(keyCodeLabel).join(" / ");
+          const assigned = [...new Set((settings.keyBindings[profile][button] ?? []).map(keyCodeLabel))].join(" / ");
           return (
             <div className="key-binding-row" key={button}>
               <span>{label}</span>

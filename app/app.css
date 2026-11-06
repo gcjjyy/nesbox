@@ -1736,7 +1736,7 @@ button {
 }
 
 .settings-sheet {
-  width: min(420px, 100%);
+  width: min(560px, 100%);
   max-height: min(760px, calc(100dvh - 32px));
   overflow: auto;
   border: 1px solid var(--line);
@@ -1761,6 +1761,14 @@ button {
   margin: 0;
   font-size: 16px;
 }
+
+.settings-sheet__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-sheet h2:focus { outline: none; }
 
 .setting-row {
   display: grid;
@@ -1817,6 +1825,39 @@ button {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.45;
+}
+
+.keyboard-settings__preview {
+  padding: 14px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+.keyboard-settings__preview .keymap { padding-block: 8px; }
+
+.keyboard-settings__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 10px 16px;
+  border: 1px solid var(--red);
+  border-radius: 6px;
+  background: var(--red);
+  color: #fff;
+  font: 600 13px var(--font-sans);
+  cursor: pointer;
+}
+
+.keyboard-settings__action:hover { background: var(--red-2); }
+
+.keyboard-settings__action:focus-visible,
+.key-binding-button:focus-visible,
+.key-profile__reset:focus-visible {
+  outline: 2px solid var(--red-2);
+  outline-offset: 3px;
 }
 
 .key-profile {

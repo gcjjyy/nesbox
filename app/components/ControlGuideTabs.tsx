@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type KeyboardEvent } from "react";
+import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import type { ControlProfileId, KeyboardBindings } from "../lib/control-profiles";
 import { KeyboardLayoutPreview } from "./KeyboardLayoutPreview";
 
@@ -10,14 +10,26 @@ const PROFILES: Array<{ id: ControlProfileId; label: string }> = [
 export function ControlGuideTabs({
   bindings,
   defaultProfile = "nes",
+  activeProfile,
+  onProfileChange,
+  renderPanel,
 }: {
   bindings: KeyboardBindings;
   defaultProfile?: ControlProfileId;
+  activeProfile?: ControlProfileId;
+  onProfileChange?: (profile: ControlProfileId) => void;
+  renderPanel?: (profile: ControlProfileId) => ReactNode;
 }) {
-  const [active, setActive] = useState<ControlProfileId>(defaultProfile);
+  const [selected, setSelected] = useState<ControlProfileId>(defaultProfile);
+  const active = activeProfile ?? selected;
   const tabsRef = useRef<Array<HTMLButtonElement | null>>([]);
   const id = useId();
   const activeIndex = PROFILES.findIndex((profile) => profile.id === active);
+
+  function setActive(profile: ControlProfileId) {
+    setSelected(profile);
+    onProfileChange?.(profile);
+  }
 
   function selectAt(index: number) {
     const wrapped = (index + PROFILES.length) % PROFILES.length;
@@ -62,8 +74,10 @@ export function ControlGuideTabs({
           aria-labelledby={`${id}-${profile.id}-tab`}
           className="control-guide-tabs__panel"
         >
-          <KeyboardLayoutPreview profile={profile.id} bindings={bindings} />
-          {profile.id === "mame" && <p>Coin과 Start, 6개 액션 버튼을 지원합니다.</p>}
+          {renderPanel ? renderPanel(profile.id) : <>
+            <KeyboardLayoutPreview profile={profile.id} bindings={bindings} />
+            {profile.id === "mame" && <p>Coin과 Start, 6개 액션 버튼을 지원합니다.</p>}
+          </>}
         </div>
       ))}
     </div>
