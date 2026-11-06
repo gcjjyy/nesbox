@@ -1,11 +1,13 @@
 import { Gamepad2, Keyboard, X } from "lucide-react";
 import type { ReactNode } from "react";
-import { KeyboardLayoutPreview } from "./KeyboardLayoutPreview";
+import type { KeyboardBindings } from "../lib/control-profiles";
+import { ControlGuideTabs } from "./ControlGuideTabs";
 
 const ICON = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
 
 interface HelpDialogProps {
   open: boolean;
+  bindings: KeyboardBindings;
   onClose: () => void;
 }
 
@@ -15,9 +17,10 @@ const gamepadRows = [
   ["A", "오른쪽 버튼"],
   ["스타트", "Start / Menu"],
   ["셀렉트", "Back / View"],
+  ["MAME 버튼 1–6", "게임패드 버튼 0–5"],
 ];
 
-export function HelpDialog({ open, onClose }: HelpDialogProps) {
+export function HelpDialog({ open, bindings, onClose }: HelpDialogProps) {
   if (!open) return null;
 
   return (
@@ -39,7 +42,7 @@ export function HelpDialog({ open, onClose }: HelpDialogProps) {
               키보드
             </h3>
             <div className="control-map__keys">
-              <KeyboardLayoutPreview />
+              <ControlGuideTabs bindings={bindings} />
             </div>
           </section>
           <ControlTable title="게임패드" icon={<Gamepad2 {...ICON} />} rows={gamepadRows} />

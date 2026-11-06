@@ -3,6 +3,7 @@ import type { GameEntry } from "./game-types";
 import {
   DEFAULT_KEY_BINDINGS,
   controlProfileForGame,
+  controlGuideRows,
   createKeyboardInputRouter,
   createPressedInputTracker,
   gamepadMapForProfile,
@@ -68,6 +69,32 @@ describe("control profiles", () => {
     expect(keyCodeLabel("KeyZ")).toBe("Z");
     expect(keyCodeLabel("ArrowLeft")).toBe("←");
     expect(keyCodeLabel("ShiftRight")).toBe("Shift");
+  });
+
+  it("builds NES and MAME guide rows from the current bindings", () => {
+    const bindings = normalizeKeyboardBindings({
+      nes: { b: ["KeyQ"] },
+      mame: { r: ["Numpad6"] },
+    });
+
+    expect(controlGuideRows("nes", bindings)).toEqual([
+      { id: "directions", label: "방향", keys: ["↑", "↓", "←", "→"] },
+      { id: "select", label: "Select", keys: ["Shift", "Shift"] },
+      { id: "start", label: "Start", keys: ["Enter"] },
+      { id: "b", label: "B", keys: ["Q"] },
+      { id: "a", label: "A", keys: ["X"] },
+    ]);
+    expect(controlGuideRows("mame", bindings).map((row) => [row.label, row.keys.join(" / ")])).toEqual([
+      ["방향", "↑ / ↓ / ← / →"],
+      ["Coin", "Shift / Shift"],
+      ["Start", "Enter"],
+      ["버튼 1", "Z"],
+      ["버튼 2", "X"],
+      ["버튼 3", "C"],
+      ["버튼 4", "A"],
+      ["버튼 5", "S"],
+      ["버튼 6", "Num 6"],
+    ]);
   });
 });
 

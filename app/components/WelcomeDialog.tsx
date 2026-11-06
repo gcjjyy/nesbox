@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Gamepad2, Save, Smartphone, Volume2 } from "lucide-react";
 import { markWelcomed, needsWelcome } from "../lib/first-visit";
+import type { KeyboardBindings } from "../lib/control-profiles";
 import { hasTouchSurface } from "../lib/touch-surface";
 import { SITE_NAME } from "../lib/site-metadata";
-import { KeyboardLayoutPreview } from "./KeyboardLayoutPreview";
+import { ControlGuideTabs } from "./ControlGuideTabs";
 
 const ICON = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
 
@@ -16,7 +17,7 @@ function browserStorage() {
 }
 
 /** 첫 방문에만 뜨는 안내. 데스크톱은 키보드 조작을, 모바일은 터치 조작을 알려 준다. */
-export function WelcomeDialog() {
+export function WelcomeDialog({ bindings }: { bindings: KeyboardBindings }) {
   const [mode, setMode] = useState<"desktop" | "mobile" | null>(null);
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export function WelcomeDialog() {
                 플레이 화면의 버튼으로 상태 저장 / 불러오기, 리셋, 전체 화면을 쓸 수 있어요.
               </li>
             </ul>
-            <KeyboardLayoutPreview />
+            <ControlGuideTabs bindings={bindings} />
           </>
         ) : (
           <ul className="welcome-dialog__tips">
@@ -62,6 +63,10 @@ export function WelcomeDialog() {
             <li>
               <Smartphone {...ICON} />
               왼쪽 스틱을 드래그해 이동, 오른쪽 B / A 버튼으로 액션. A+B 버튼은 두 버튼을 동시에 눌러요.
+            </li>
+            <li>
+              <Gamepad2 {...ICON} />
+              MAME은 Coin / Start와 1–6의 6버튼 배열을 사용해요.
             </li>
             <li>
               <Save {...ICON} />

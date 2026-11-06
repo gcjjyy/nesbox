@@ -2080,7 +2080,12 @@ button {
 
 .keymap__face {
   display: grid;
+  grid-template-columns: repeat(2, var(--cap));
   gap: 4px;
+}
+
+.keymap--mame .keymap__face {
+  grid-template-columns: repeat(3, var(--cap));
 }
 
 .keymap__row {
@@ -2134,6 +2139,54 @@ button {
 }
 
 .control-map__keys p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.control-guide-tabs {
+  display: grid;
+  gap: 12px;
+}
+
+.control-guide-tabs__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: rgba(5, 7, 8, 0.46);
+}
+
+.control-guide-tabs__list button {
+  height: 30px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.control-guide-tabs__list button[aria-selected="true"] {
+  background: var(--red);
+  color: #fff;
+}
+
+.control-guide-tabs__list button:focus-visible {
+  outline: 2px solid var(--red-2);
+  outline-offset: 2px;
+}
+
+.control-guide-tabs__panel {
+  display: grid;
+  gap: 10px;
+}
+
+.control-guide-tabs__panel > p {
   margin: 0;
   color: var(--muted);
   font-size: 11px;

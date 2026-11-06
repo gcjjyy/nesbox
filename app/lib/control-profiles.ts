@@ -5,6 +5,12 @@ export type ControlProfileId = "nes" | "mame";
 export type ControlBindings = Partial<Record<NesboxButton, readonly string[]>>;
 export type KeyboardBindings = Record<ControlProfileId, ControlBindings>;
 
+export interface ControlGuideRow {
+  id: "directions" | NesboxButton;
+  label: string;
+  keys: string[];
+}
+
 const NES_BUTTONS = ["up", "down", "left", "right", "select", "start", "b", "a"] as const satisfies readonly NesboxButton[];
 const MAME_BUTTONS = [
   "up", "down", "left", "right", "select", "start", "b", "y", "a", "x", "l", "r",
@@ -102,6 +108,32 @@ export function keyCodeLabel(code: string): string {
   if (/^Digit[0-9]$/.test(code)) return code.slice(5);
   if (/^Numpad[0-9]$/.test(code)) return `Num ${code.slice(6)}`;
   return code;
+}
+
+export function controlGuideRows(profile: ControlProfileId, bindings: KeyboardBindings): ControlGuideRow[] {
+  const profileBindings = bindings[profile];
+  const keys = (...buttons: NesboxButton[]) => buttons.flatMap(
+    (button) => (profileBindings[button] ?? []).map(keyCodeLabel),
+  );
+  const rows: ControlGuideRow[] = [
+    { id: "directions", label: "방향", keys: keys("up", "down", "left", "right") },
+    { id: "select", label: profile === "mame" ? "Coin" : "Select", keys: keys("select") },
+    { id: "start", label: "Start", keys: keys("start") },
+  ];
+  if (profile === "nes") {
+    rows.push(
+      { id: "b", label: "B", keys: keys("b") },
+      { id: "a", label: "A", keys: keys("a") },
+    );
+  } else {
+    const actions = ["b", "y", "a", "x", "l", "r"] as const satisfies readonly NesboxButton[];
+    actions.forEach((button, index) => rows.push({
+      id: button,
+      label: `버튼 ${index + 1}`,
+      keys: keys(button),
+    }));
+  }
+  return rows;
 }
 
 export function normalizeKeyboardBindings(value: unknown): KeyboardBindings {

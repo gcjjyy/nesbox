@@ -1,45 +1,51 @@
-import { KEYBOARD_LAYOUT as layout, type KeyBinding } from "../lib/keyboard-layout";
+import {
+  controlGuideRows,
+  type ControlGuideRow,
+  type ControlProfileId,
+  type KeyboardBindings,
+} from "../lib/control-profiles";
 
-const BUTTON_LABEL: Record<string, string> = {
-  up: "위",
-  down: "아래",
-  left: "왼쪽",
-  right: "오른쪽",
-  a: "A",
-  b: "B",
-  start: "스타트",
-  select: "셀렉트",
-};
-
-function Keycap({ binding, wide }: { binding: KeyBinding | { label: string; button: string }; wide?: boolean }) {
+function Keycap({ label, action, wide }: { label: string; action: string; wide?: boolean }) {
   return (
     <span className={`keycap${wide ? " keycap--wide" : ""}`}>
-      <kbd>{binding.label}</kbd>
-      <small>{BUTTON_LABEL[binding.button] ?? binding.button}</small>
+      <kbd>{label}</kbd>
+      <small>{action}</small>
     </span>
   );
 }
 
-/** PC 키 배치를 실제 키보드처럼 키캡 모양으로 보여 준다. */
-export function KeyboardLayoutPreview() {
+export function KeyboardLayoutPreview({
+  profile,
+  bindings,
+}: {
+  profile: ControlProfileId;
+  bindings: KeyboardBindings;
+}) {
+  const rows = controlGuideRows(profile, bindings);
+  const directions = rows[0];
+  const system = rows.slice(1, 3);
+  const face = rows.slice(3);
+  const directionOrder = [0, 2, 1, 3];
+
   return (
-    <div className="keymap" aria-label="PC 키 배치">
+    <div className={`keymap keymap--${profile}`} aria-label={`${profile === "mame" ? "MAME" : "NES"} PC 키 배치`}>
       <div className="keymap__dpad">
-        <Keycap binding={layout.dpad.up} />
-        <Keycap binding={layout.dpad.left} />
-        <Keycap binding={layout.dpad.down} />
-        <Keycap binding={layout.dpad.right} />
+        {directionOrder.map((index) => (
+          <Keycap key={`${directions.id}-${index}`} label={directions.keys[index]} action={directions.label} />
+        ))}
       </div>
       <div className="keymap__system">
-        <Keycap binding={{ label: "Shift", button: "select" }} wide />
-        <Keycap binding={{ label: "Enter", button: "start" }} wide />
+        {system.map((row) => <GuideKeycap key={row.id} row={row} wide />)}
       </div>
       <div className="keymap__face">
-        <div className="keymap__row">
-          <Keycap binding={layout.b} />
-          <Keycap binding={layout.a} />
-        </div>
+        {face.map((row) => <GuideKeycap key={row.id} row={row} />)}
       </div>
     </div>
   );
+}
+
+function GuideKeycap({ row, wide }: { row: ControlGuideRow; wide?: boolean }) {
+  const labels = [...new Set(row.keys)];
+  const label = labels.join("/");
+  return <Keycap label={label} action={row.label} wide={wide || label.length > 3} />;
 }
