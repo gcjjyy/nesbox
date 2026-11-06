@@ -1,5 +1,6 @@
 import type { NesboxButton, NesboxCore } from "./core-contract";
 import type { EmulatorProfile } from "./emulator-registry";
+import { runtimeLoadProgress, type GameLoadProgress } from "./game-load-progress";
 
 const DATA_PATH = "/emulatorjs/data/";
 const RETROPAD_INDEX: Record<NesboxButton, number> = {
@@ -25,6 +26,7 @@ export interface EmulatorJsMountConfig {
   dataPath: string;
   volume: number;
   signal?: AbortSignal;
+  onProgress?: (progress: GameLoadProgress) => void;
 }
 
 export interface EmulatorJsInstance {
@@ -46,6 +48,7 @@ export async function createEmulatorJsCore(
   profile: EmulatorProfile,
   hostElement: HTMLElement,
   bridge: EmulatorJsBridge = browserEmulatorJsBridge,
+  onProgress?: (progress: GameLoadProgress) => void,
 ): Promise<NesboxCore> {
   if (profile.runtime !== "emulatorjs" || !profile.coreName) {
     throw new Error(`${profile.id} 프로필은 EmulatorJS 아케이드 코어가 아닙니다.`);
@@ -111,6 +114,9 @@ export async function createEmulatorJsCore(
           dataPath: DATA_PATH,
           volume: currentVolume,
           signal: mountAbort.signal,
+          onProgress: (progress) => {
+            if (!disposed && !instance) onProgress?.(progress);
+          },
         });
       }
       const mounted = await mountPromise;
@@ -220,12 +226,15 @@ let hostSequence = 0;
 
 export const browserEmulatorJsBridge: EmulatorJsBridge = {
   async mount(config) {
+    config.onProgress?.({ label: "게임 코어 준비 중", percent: null });
     await requireLocalCoreAssets(config.dataPath, config.coreName);
     if (config.signal?.aborted) throw new DOMException("EmulatorJS mount cancelled", "AbortError");
     const ejsWindow = window as EmulatorJsWindow;
     const hostId = config.hostElement.id || `nesbox-ejs-${++hostSequence}`;
     config.hostElement.id = hostId;
     config.hostElement.replaceChildren();
+    // A repeated launch must not read the previous runtime's progress or error state.
+    ejsWindow.EJS_emulator = undefined;
 
     ejsWindow.EJS_player = `#${hostId}`;
     ejsWindow.EJS_core = config.coreName;
@@ -255,6 +264,7 @@ export const browserEmulatorJsBridge: EmulatorJsBridge = {
       let settled = false;
       let runtimePatched = false;
       let errorPoll = 0;
+      let lastProgressMessage = "";
 
       URL.createObjectURL = ((object: Blob | MediaSource) => {
         const url = originalCreateObjectUrl(object);
@@ -346,7 +356,15 @@ export const browserEmulatorJsBridge: EmulatorJsBridge = {
 
       errorPoll = window.setInterval(() => {
         raw = raw ?? ejsWindow.EJS_emulator;
-        if (raw?.failedToStart) fail(raw.textElem?.innerText || "EmulatorJS failed to start");
+        if (raw?.failedToStart) {
+          fail(raw.textElem?.innerText || "EmulatorJS failed to start");
+          return;
+        }
+        const message = raw?.textElem?.innerText?.trim();
+        if (message && message !== lastProgressMessage) {
+          lastProgressMessage = message;
+          config.onProgress?.(runtimeLoadProgress(message));
+        }
       }, 50);
     });
   },

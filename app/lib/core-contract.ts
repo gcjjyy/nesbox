@@ -1,4 +1,5 @@
 import type { SystemId } from "./rom";
+import type { GameLoadProgress } from "./game-load-progress";
 
 export type NesboxButton =
   | "up"
@@ -42,6 +43,7 @@ export interface CoreRuntimeOptions {
 export interface CoreMountTargets {
   canvas: HTMLCanvasElement;
   hostElement: HTMLElement;
+  onLoadProgress?: (progress: GameLoadProgress) => void;
 }
 
 export interface NesboxCore {

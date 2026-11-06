@@ -100,15 +100,18 @@ describe("createCore", () => {
     const core = {} as NesboxCore;
     const hostElement = {} as HTMLElement;
     const canvas = {} as HTMLCanvasElement;
+    const onLoadProgress = vi.fn();
     createEmulatorJsCore.mockResolvedValueOnce(core);
     vi.spyOn(audioSession, "getContext");
 
-    await expect(createCore("fbneo", { canvas, hostElement })).resolves.toBe(core);
+    await expect(createCore("fbneo", { canvas, hostElement, onLoadProgress })).resolves.toBe(core);
 
     expect(audioSession.getContext).not.toHaveBeenCalled();
     expect(createEmulatorJsCore).toHaveBeenCalledWith(
       expect.objectContaining({ id: "fbneo", coreName: "fbneo" }),
       hostElement,
+      undefined,
+      onLoadProgress,
     );
   });
 });

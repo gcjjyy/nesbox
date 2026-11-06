@@ -41,6 +41,24 @@ function fakeInstance(): EmulatorJsInstance {
 }
 
 describe("createEmulatorJsCore", () => {
+  it("forwards startup progress only while the current core is mounting", async () => {
+    const mounting = deferred<EmulatorJsInstance>();
+    let config!: EmulatorJsMountConfig;
+    const bridge: EmulatorJsBridge = { mount: vi.fn((next) => { config = next; return mounting.promise; }) };
+    const onProgress = vi.fn();
+    const core = await createEmulatorJsCore(emulatorById("fbneo")!, fakeHost(), bridge, onProgress);
+    await core.loadRom(new Uint8Array([1]), "sf2ce.zip");
+    const starting = core.start();
+    config.onProgress?.({ label: "게임 코어 다운로드", percent: 40 });
+    expect(onProgress).toHaveBeenLastCalledWith({ label: "게임 코어 다운로드", percent: 40 });
+    core.dispose();
+    onProgress.mockClear();
+    config.onProgress?.({ label: "게임 코어 다운로드", percent: 90 });
+    expect(onProgress).not.toHaveBeenCalled();
+    mounting.resolve(fakeInstance());
+    await starting;
+  });
+
   it("mounts once with the original arcade shortname and delegates the core contract", async () => {
     const instance = fakeInstance();
     const mount = vi.fn(async (_config: EmulatorJsMountConfig) => instance);

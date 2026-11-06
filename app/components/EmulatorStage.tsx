@@ -13,7 +13,7 @@ import {
 } from "../lib/control-profiles";
 import { recoverAudioCore } from "../lib/audio-core-recovery";
 import { AudioContextPreparationError, createCore, drawCoreMissing, makeUnavailableCore } from "../lib/core-loader";
-import { loadAssignedCore, type AssignedCoreStartResult } from "../lib/core-load-finalizer";
+import { loadAssignedCore } from "../lib/core-load-finalizer";
 import { emulatorById } from "../lib/emulator-registry";
 import type { GameEntry } from "../lib/game-types";
 import { fetchRomBytes } from "../lib/library-client";
@@ -25,6 +25,8 @@ import { audioPromptRequired, audioSession } from "../lib/audio-session";
 import { audioCoreRecoveryStatus, audioUnlockStatus } from "../lib/audio-unlock-policy";
 import { useAudioSessionState } from "../lib/use-audio-session-state";
 import { TouchControls } from "./TouchControls";
+import { GameLoadingOverlay } from "./GameLoadingOverlay";
+import { romLoadProgress, type GameLoadProgress } from "../lib/game-load-progress";
 
 export interface EmulatorStageHandle {
   openGame: (game: GameEntry) => Promise<void>;
@@ -93,14 +95,9 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
   const keyboardRouterRef = useRef<KeyboardInputRouter | null>(null);
   const gamepadTrackerRef = useRef<PressedInputTracker | null>(null);
   const fetchAbortRef = useRef<AbortController | null>(null);
-  const readyStartRef = useRef<{
-    seq: number;
-    start: () => Promise<AssignedCoreStartResult>;
-  } | null>(null);
   const [phase, setPhase] = useState<EmulatorPhase>("idle");
   const [audioUnlocking, setAudioUnlocking] = useState(false);
-  const [startingArcade, setStartingArcade] = useState(false);
-  const [romProgress, setRomProgress] = useState<string | null>(null);
+  const [loadProgress, setLoadProgress] = useState<GameLoadProgress>({ label: "게임 준비 중", percent: null });
   const [screenSystem, setScreenSystem] = useState<SystemId>("nes");
   const [inputProfile, setInputProfile] = useState<ControlProfileId>("nes");
   const [screenPixels, setScreenPixels] = useState(screenSizeForSystem("nes"));
@@ -274,13 +271,10 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
     releaseAllTrackedInput();
     fetchAbortRef.current?.abort();
     fetchAbortRef.current = null;
-    readyStartRef.current = null;
     const core = coreRef.current;
     coreRef.current = null;
     gameRef.current = null;
     setAudioUnlocking(false);
-    setStartingArcade(false);
-    setRomProgress(null);
     if (core) disposeOwnedCore(core);
     if (!updateUi) return;
     switchInputProfile("nes");
@@ -343,11 +337,11 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
     audioRecoveryRef.current = null;
     const seq = loadSeqRef.current + 1;
     loadSeqRef.current = seq;
+    disposeCore();
     setPhase("loading-core");
-    setRomProgress(null);
+    setLoadProgress({ label: "게임 준비 중", percent: null });
     onRunningChange(false);
     onStatus(`${game.title} 로딩 중`);
-    disposeCore();
     switchInputProfile(controlProfileForGame(game));
     setScreenSystem(game.system);
     setScreenPixels(screenSizeForSystem(game.system));
@@ -369,7 +363,14 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
     let realCore = true;
     let audioPreparationFailed = false;
     try {
-      core = await createCore(game.emulatorId, { canvas, hostElement });
+      core = await createCore(game.emulatorId, {
+        canvas, hostElement,
+        onLoadProgress: (progress) => {
+          if (isStaleLoad(seq)) return;
+          setLoadProgress(progress);
+          onStatus(`${progress.label}${progress.percent === null ? "" : ` · ${progress.percent}%`}`);
+        },
+      });
       if (isStaleLoad(seq)) {
         disposeOwnedCore(core);
         return "stale";
@@ -403,26 +404,21 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
       prepare: () => core.setVolume(settings.volume),
       fetchRom: () => fetchRomBytes(game.id, (loaded, total) => {
         if (isStaleLoad(seq)) return;
-        const progress = total && total > 0
-          ? `${Math.min(100, Math.round((loaded / total) * 100))}%`
-          : `${(loaded / 1024 / 1024).toFixed(1)} MB`;
-        setRomProgress(progress);
-        onStatus(`${game.title} ROM 불러오는 중 · ${progress}`);
+        const progress = romLoadProgress(loaded, total ?? game.size);
+        setLoadProgress(progress);
+        onStatus(`${game.title} ROM 불러오는 중 · ${progress.percent === null ? progress.detail : `${progress.percent}%`}`);
       }, abortController.signal),
       loadRom: (romBytes) => core.loadRom(romBytes, game.fileName),
       isCurrent: () => !isStaleLoad(seq) && coreRef.current === core,
       dispose: disposeLoadCore,
       start: () => core.start(),
-      autoStart: profile.runtime !== "emulatorjs",
       onRomLoaded: () => {
-        setRomProgress(null);
+        setLoadProgress({ label: "게임 시작 준비 중", percent: null });
         if (profile.runtime !== "emulatorjs" && canvasRef.current) {
           syncScreenPixelsFromCanvas(canvasRef.current);
         }
       },
       onStarted: () => {
-        readyStartRef.current = null;
-        setStartingArcade(false);
         syncScreenPixelsFromActiveCanvas();
         setPhase("running");
         onRunningChange(true);
@@ -435,7 +431,6 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
         }
       },
       onFailure: (error) => {
-        readyStartRef.current = null;
         audioRecoveryRef.current = null;
         setPhase("error");
         onRunningChange(false);
@@ -445,33 +440,12 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
     if (fetchAbortRef.current === abortController) fetchAbortRef.current = null;
     if (finalization.kind === "stale") return "stale";
     if (finalization.kind === "failed") return false;
-    if (finalization.kind === "ready") {
-      readyStartRef.current = { seq, start: finalization.start };
-      setPhase("ready");
-      onStatus("ROM 준비 완료 · 게임 시작을 눌러주세요.");
-    }
     return realCore;
-  }
-
-  async function startReadyGame(): Promise<boolean> {
-    const pending = readyStartRef.current;
-    if (!pending || pending.seq !== loadSeqRef.current || startingArcade) return false;
-    setStartingArcade(true);
-    onStatus("아케이드 코어 시작 중");
-    const result = await pending.start();
-    if (result.kind !== "started" && pending === readyStartRef.current) {
-      setStartingArcade(false);
-    }
-    return result.kind === "started";
   }
 
   function toggleRun() {
     const core = coreRef.current;
-    if (!core) return;
-    if (phase === "ready") {
-      void startReadyGame();
-      return;
-    }
+    if (!core || (phase !== "running" && phase !== "paused")) return;
     if (phase === "running") {
       core.pause();
       setPhase("paused");
@@ -479,8 +453,7 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
       onStatus("일시정지");
       return;
     }
-    if (phase === "paused") core.resume();
-    else core.start();
+    core.resume();
     setPhase("running");
     onRunningChange(true);
     onStatus("실행 중");
@@ -510,7 +483,7 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
   async function loadState() {
     const core = coreRef.current;
     const game = gameRef.current;
-    if (!core || !game) return;
+    if (!core || !game || (phase !== "running" && phase !== "paused")) return;
     const bytes = await loadLocalStateBytes(game.id, game.emulatorId, 0);
     if (coreRef.current !== core || gameRef.current !== game) return;
     if (!bytes) {
@@ -518,13 +491,10 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
       onStatus("이 브라우저에 저장된 상태가 없습니다.");
       return;
     }
-    const startedFromReady = phase === "ready";
-    if (startedFromReady && !await startReadyGame()) return;
     await core.loadState(bytes);
     if (coreRef.current !== core) return;
-    if (phase !== "running" && !startedFromReady) {
-      if (phase === "paused") core.resume();
-      else await core.start();
+    if (phase === "paused") {
+      core.resume();
       setPhase("running");
       onRunningChange(true);
     }
@@ -640,25 +610,7 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
                 <span>NES 또는 아케이드 게임을 브라우저에서 직접 실행합니다.</span>
               </div>
             )}
-            {screenSystem === "arcade" && phase === "loading-core" && (
-              <div className="arcade-start-overlay" aria-live="polite">
-                <strong>ROM 준비 중</strong>
-                <span>{romProgress ?? "코어를 확인하고 있습니다."}</span>
-              </div>
-            )}
-            {screenSystem === "arcade" && phase === "ready" && (
-              <div className="arcade-start-overlay">
-                <button
-                  type="button"
-                  className="arcade-start-button"
-                  onClick={() => void startReadyGame()}
-                  disabled={startingArcade}
-                >
-                  {startingArcade ? "시작 중…" : "게임 시작"}
-                </button>
-                <span>클릭하면 아케이드 코어와 오디오를 시작합니다.</span>
-              </div>
-            )}
+            {phase === "loading-core" && <GameLoadingOverlay progress={loadProgress} />}
           </div>
           {audioPromptVisible && (
             <div className="audio-unlock">

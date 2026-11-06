@@ -1201,7 +1201,7 @@ button {
   display: none !important;
 }
 
-.arcade-start-overlay {
+.game-loading {
   position: absolute;
   inset: 0;
   z-index: 4;
@@ -1217,25 +1217,48 @@ button {
     rgba(7, 9, 9, 0.94);
 }
 
-.arcade-start-overlay span {
+.game-loading__detail {
   color: var(--muted);
   font-size: 12px;
 }
 
-.arcade-start-button {
-  min-width: 150px;
-  border: 1px solid color-mix(in srgb, var(--red) 65%, #fff 10%);
+.game-loading__bar {
+  width: min(260px, 60vw);
+  height: 6px;
+  overflow: hidden;
   border-radius: 999px;
-  padding: 12px 22px;
-  color: #f5f7f2;
-  background: var(--red);
-  font: 700 15px var(--font-mono);
-  cursor: pointer;
+  background: #ffffff1a;
 }
 
-.arcade-start-button:disabled {
-  cursor: wait;
-  opacity: 0.65;
+.game-loading__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--red-2);
+  transition: width 120ms linear;
+}
+
+.game-loading__bar--indeterminate > span {
+  width: 35%;
+  animation: game-loading-progress 1.4s ease-in-out infinite;
+}
+
+.game-loading__detail {
+  min-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes game-loading-progress {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(290%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-loading__bar--indeterminate > span {
+    animation: none;
+    margin-inline: auto;
+  }
+  .game-loading__bar > span { transition: none; }
 }
 
 .stage-empty {
