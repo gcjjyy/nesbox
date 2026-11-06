@@ -73,10 +73,10 @@ export function ArcadeCabinetPreview({ cover, title = "MAME" }: { cover?: string
       </g>
       {[ [570,533], [654,520], [738,526], [587,590], [671,577], [755,583] ].map(([x,y], index) => (
         <g key={index} data-arcade-button={index+1} aria-label={`버튼 ${index+1}`}>
-          <ellipse cx={x} cy={y+7} rx="33" ry="23" fill="#08110b" stroke="#66705a" strokeWidth="2"/>
+          <ellipse cx={x} cy={y+7} rx="33" ry="23" fill="#08110b" stroke="#303831" strokeWidth="2"/>
           <ellipse cx={x} cy={y+2} rx="26" ry="20" fill="#67251a"/>
-          <ellipse cx={x} cy={y-3} rx="25" ry="18" fill={paint("button")} stroke="#ed9b6d" strokeWidth="1.5"/>
-          <path d={`M${x-16} ${y-9}q14-12 30-1`} fill="none" stroke="#ffd2a2" strokeOpacity=".4" strokeWidth="2"/>
+          <ellipse cx={x} cy={y-3} rx="25" ry="18" fill={paint("button")} stroke="#793625" strokeWidth="1.5"/>
+          <path d={`M${x-16} ${y-9}q14-12 30-1`} fill="none" stroke="#f1ae88" strokeOpacity=".25" strokeWidth="2"/>
         </g>
       ))}
       <g fill="#c2c7b2" stroke="#101d13" strokeWidth="4">
