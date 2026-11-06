@@ -1375,6 +1375,17 @@ button {
   height: 68px;
 }
 
+.touch-controls__cluster--face-mame {
+  grid-template-columns: repeat(3, 58px);
+  grid-template-rows: repeat(2, 58px);
+  gap: 9px;
+}
+
+.touch-controls__cluster--face-mame .touch-button {
+  min-width: 58px;
+  height: 58px;
+}
+
 .touch-controls__center {
   display: flex;
   flex-wrap: wrap;

@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { FolderInput, Pause, Play, RotateCcw, Save } from "lucide-react";
 import type { NesboxButton } from "../lib/core-contract";
+import type { ControlProfileId } from "../lib/control-profiles";
 import { stickButtons } from "../lib/touch-stick";
 
 interface TouchControlsProps {
   enabled: boolean;
   running: boolean;
+  profile: ControlProfileId;
   onButton: (button: NesboxButton, pressed: boolean) => void;
   onRunToggle: () => void;
   onReset: () => void;
@@ -15,10 +17,19 @@ interface TouchControlsProps {
 }
 
 // NES에는 A/B만 있으므로 Y/X 대신 윗줄 전체를 A+B 동시 입력 버튼으로 쓴다(열혈 시리즈 점프 등).
-const face: Array<{ buttons: NesboxButton[]; label: string; combo?: boolean }> = [
+const NES_FACE: Array<{ buttons: NesboxButton[]; label: string; combo?: boolean }> = [
   { buttons: ["a", "b"], label: "A+B", combo: true },
   { buttons: ["b"], label: "B" },
   { buttons: ["a"], label: "A" },
+];
+
+const MAME_FACE: Array<{ buttons: NesboxButton[]; label: string }> = [
+  { buttons: ["b"], label: "1" },
+  { buttons: ["y"], label: "2" },
+  { buttons: ["a"], label: "3" },
+  { buttons: ["x"], label: "4" },
+  { buttons: ["l"], label: "5" },
+  { buttons: ["r"], label: "6" },
 ];
 
 const ICON = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
@@ -33,7 +44,7 @@ interface TouchHit {
   stick: boolean;
 }
 
-export function TouchControls({ enabled, running, onButton, onRunToggle, onReset, onSave, onLoad, canLoad }: TouchControlsProps) {
+export function TouchControls({ enabled, running, profile, onButton, onRunToggle, onReset, onSave, onLoad, canLoad }: TouchControlsProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const activePointersRef = useRef(new Map<number, ButtonSet>());
   // 스틱에서 시작한 터치는 손을 뗄 때까지 스틱에 묶어 둔다.
@@ -47,13 +58,14 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
   }, [onButton]);
 
   useEffect(() => {
-    return () => {
-      for (const button of pressedCountsRef.current.keys()) onButtonRef.current(button, false);
-      activePointersRef.current.clear();
-      stickPointersRef.current.clear();
-      pressedCountsRef.current.clear();
-    };
+    return () => releaseAllButtons(false);
   }, []);
+
+  useEffect(() => releaseAllButtons, [profile]);
+
+  useEffect(() => {
+    if (!enabled || !running) releaseAllButtons();
+  }, [enabled, running]);
 
   function press(button: NesboxButton) {
     const count = pressedCountsRef.current.get(button) ?? 0;
@@ -77,6 +89,14 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
       return;
     }
     pressedCountsRef.current.set(button, count - 1);
+  }
+
+  function releaseAllButtons(updateUi = true) {
+    for (const button of pressedCountsRef.current.keys()) onButtonRef.current(button, false);
+    activePointersRef.current.clear();
+    stickPointersRef.current.clear();
+    pressedCountsRef.current.clear();
+    if (updateUi) setPressedButtons(new Set());
   }
 
   function buttonsAt(x: number, y: number, ownedByStick = false): TouchHit {
@@ -247,7 +267,7 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
     >
       <TouchStick pressedButtons={pressedButtons} />
       <div className="touch-controls__center">
-        <TouchButton button="select" label="SELECT" pressed={pressedButtons.has("select")} wide />
+        <TouchButton button="select" label={profile === "mame" ? "COIN" : "SELECT"} pressed={pressedButtons.has("select")} wide />
         <TouchButton button="start" label="START" pressed={pressedButtons.has("start")} wide />
         <button type="button" className="touch-action" onClick={onRunToggle} title={running ? "일시정지" : "실행"} aria-label={running ? "일시정지" : "실행"}>
           {running ? <Pause {...ICON} /> : <Play {...ICON} />}
@@ -262,14 +282,14 @@ export function TouchControls({ enabled, running, onButton, onRunToggle, onReset
           <FolderInput {...ICON} />
         </button>
       </div>
-      <div className="touch-controls__cluster touch-controls__cluster--face">
-        {face.map(({ buttons, label, combo }) => (
+      <div className={`touch-controls__cluster touch-controls__cluster--face touch-controls__cluster--face-${profile}`}>
+        {(profile === "mame" ? MAME_FACE : NES_FACE).map(({ buttons, label, ...item }) => (
           <TouchButton
             key={label}
             button={buttons}
             label={label}
             pressed={buttons.every((button) => pressedButtons.has(button))}
-            combo={combo}
+            combo={"combo" in item ? Boolean(item.combo) : false}
           />
         ))}
       </div>

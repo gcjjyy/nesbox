@@ -1,6 +1,16 @@
 import { useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type Ref } from "react";
 import { Volume2 } from "lucide-react";
 import type { NesboxButton, NesboxCore, EmulatorPhase } from "../lib/core-contract";
+import {
+  controlProfileForGame,
+  createKeyboardInputRouter,
+  createPressedInputTracker,
+  gamepadMapForProfile,
+  keyboardMapForProfile,
+  type ControlProfileId,
+  type KeyboardInputRouter,
+  type PressedInputTracker,
+} from "../lib/control-profiles";
 import { recoverAudioCore } from "../lib/audio-core-recovery";
 import { AudioContextPreparationError, createCore, drawCoreMissing, makeUnavailableCore } from "../lib/core-loader";
 import { loadAssignedCore, type AssignedCoreStartResult } from "../lib/core-load-finalizer";
@@ -10,7 +20,6 @@ import { fetchRomBytes } from "../lib/library-client";
 import type { SystemId } from "../lib/rom";
 import { loadLocalStateBytes, saveLocalStateBytes } from "../lib/state-storage";
 import type { UserSettings } from "../lib/storage";
-import { KEYBOARD_MAP } from "../lib/keyboard-layout";
 import { hasTouchSurface } from "../lib/touch-surface";
 import { audioPromptRequired, audioSession } from "../lib/audio-session";
 import { audioCoreRecoveryStatus, audioUnlockStatus } from "../lib/audio-unlock-policy";
@@ -35,17 +44,6 @@ export interface EmulatorStageProps {
   onSavedStateChange?: (hasSavedState: boolean) => void;
   ref?: Ref<EmulatorStageHandle>;
 }
-
-const GAMEPAD_BUTTON_MAP = new Map<number, NesboxButton>([
-  [0, "b"],
-  [1, "a"],
-  [8, "select"],
-  [9, "start"],
-  [12, "up"],
-  [13, "down"],
-  [14, "left"],
-  [15, "right"],
-]);
 
 const GAMEPAD_AXIS_THRESHOLD = 0.45;
 
@@ -88,6 +86,10 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   const audioRecoveryRef = useRef<PendingAudioRecovery | null>(null);
   const audioUnlockAttemptRef = useRef<AudioUnlockAttempt | null>(null);
   const gamepadButtonsRef = useRef(new Set<NesboxButton>());
+  const settingsRef = useRef(settings);
+  const inputProfileRef = useRef<ControlProfileId>("nes");
+  const keyboardRouterRef = useRef<KeyboardInputRouter | null>(null);
+  const gamepadTrackerRef = useRef<PressedInputTracker | null>(null);
   const fetchAbortRef = useRef<AbortController | null>(null);
   const readyStartRef = useRef<{
     seq: number;
@@ -98,11 +100,29 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   const [startingArcade, setStartingArcade] = useState(false);
   const [romProgress, setRomProgress] = useState<string | null>(null);
   const [screenSystem, setScreenSystem] = useState<SystemId>("nes");
+  const [inputProfile, setInputProfile] = useState<ControlProfileId>("nes");
   const [screenPixels, setScreenPixels] = useState(screenSizeForSystem("nes"));
   const [touchSurface, setTouchSurface] = useState(false);
   const [hasSavedState, setHasSavedState] = useState(false);
   const audioState = useAudioSessionState();
   const audioPromptVisible = screenSystem !== "arcade" && audioPromptRequired(phase === "running", audioState);
+  settingsRef.current = settings;
+
+  if (!keyboardRouterRef.current) {
+    keyboardRouterRef.current = createKeyboardInputRouter({
+      resolveButton: (code) => keyboardMapForProfile(
+        settingsRef.current.keyBindings,
+        inputProfileRef.current,
+      ).get(code),
+      send: (button, pressed) => coreRef.current?.setButton(0, button, pressed),
+      isSuspended: () => false,
+    });
+  }
+  if (!gamepadTrackerRef.current) {
+    gamepadTrackerRef.current = createPressedInputTracker(
+      (button, pressed) => coreRef.current?.setButton(0, button, pressed),
+    );
+  }
 
   useImperativeHandle(ref, () => ({
     openGame,
@@ -123,26 +143,23 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   }, [onPhaseChange, phase]);
 
   useEffect(() => {
-    const held = new Set<NesboxButton>();
-    const onKey = (event: KeyboardEvent, pressed: boolean) => {
-      const button = KEYBOARD_MAP.get(event.code);
-      if (!button || !coreRef.current) return;
-      // 검색창 등에 글자를 칠 수 있도록 입력 필드에서는 가로채지 않는다.
-      if (pressed && event.target instanceof HTMLElement && event.target.matches("input:not([type=range]):not([type=checkbox]):not([type=radio]), textarea, [contenteditable]")) return;
-      event.preventDefault();
-      coreRef.current.setButton(0, button, pressed);
-      if (pressed) held.add(button);
-      else held.delete(button);
+    const router = keyboardRouterRef.current!;
+    const down = (event: KeyboardEvent) => router.keyDown(event);
+    const up = (event: KeyboardEvent) => router.keyUp(event);
+    const releaseAll = () => releaseAllTrackedInput();
+    const onVisibilityChange = () => {
+      if (document.hidden) releaseAll();
     };
-    const down = (event: KeyboardEvent) => onKey(event, true);
-    const up = (event: KeyboardEvent) => onKey(event, false);
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
+    window.addEventListener("blur", releaseAll);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
-      // 언마운트될 때 눌려 있던 버튼이 남지 않도록 놓아 준다.
-      for (const button of held) coreRef.current?.setButton(0, button, false);
+      window.removeEventListener("blur", releaseAll);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      releaseAll();
     };
   }, []);
 
@@ -159,7 +176,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
       const gamepads = navigator.getGamepads?.() ?? [];
       const gamepad = Array.from(gamepads).find((item): item is Gamepad => Boolean(item));
       if (gamepad) {
-        for (const [index, button] of GAMEPAD_BUTTON_MAP) {
+        for (const [index, button] of gamepadMapForProfile(inputProfileRef.current)) {
           setGamepadButton(next, button, Boolean(gamepad.buttons[index]?.pressed));
         }
         const xAxis = gamepad.axes[0] ?? 0;
@@ -172,10 +189,10 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
 
       const previous = gamepadButtonsRef.current;
       for (const button of previous) {
-        if (!next.has(button)) coreRef.current?.setButton(0, button, false);
+        if (!next.has(button)) gamepadTrackerRef.current?.set(button, false);
       }
       for (const button of next) {
-        if (!previous.has(button)) coreRef.current?.setButton(0, button, true);
+        if (!previous.has(button)) gamepadTrackerRef.current?.set(button, true);
       }
       gamepadButtonsRef.current = next;
       raf = requestAnimationFrame(readGamepad);
@@ -184,9 +201,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     raf = requestAnimationFrame(readGamepad);
     return () => {
       cancelAnimationFrame(raf);
-      for (const button of gamepadButtonsRef.current) {
-        coreRef.current?.setButton(0, button, false);
-      }
+      gamepadTrackerRef.current?.releaseAll();
       gamepadButtonsRef.current.clear();
     };
   }, []);
@@ -249,6 +264,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
   }
 
   function disposeCore(updateUi = true) {
+    releaseAllTrackedInput();
     fetchAbortRef.current?.abort();
     fetchAbortRef.current = null;
     readyStartRef.current = null;
@@ -260,6 +276,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     setRomProgress(null);
     if (core) disposeOwnedCore(core);
     if (!updateUi) return;
+    switchInputProfile("nes");
     setScreenSystem("nes");
     setScreenPixels(screenSizeForSystem("nes"));
     setPhase("idle");
@@ -324,6 +341,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     onRunningChange(false);
     onStatus(`${game.title} 로딩 중`);
     disposeCore();
+    switchInputProfile(controlProfileForGame(game));
     setScreenSystem(game.system);
     setScreenPixels(screenSizeForSystem(game.system));
     gameRef.current = game;
@@ -577,6 +595,19 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
     coreRef.current?.setButton(0, button, pressed);
   }
 
+  function releaseAllTrackedInput() {
+    keyboardRouterRef.current?.releaseAll();
+    gamepadTrackerRef.current?.releaseAll();
+    gamepadButtonsRef.current.clear();
+  }
+
+  function switchInputProfile(next: ControlProfileId) {
+    if (inputProfileRef.current === next) return;
+    releaseAllTrackedInput();
+    inputProfileRef.current = next;
+    setInputProfile(next);
+  }
+
   const screenSize = screenSizeForSystem(screenSystem);
   const screenStyle = {
     "--screen-aspect": `${screenPixels.width} / ${screenPixels.height}`,
@@ -639,6 +670,7 @@ export function EmulatorStage({ settings, onPhaseChange, onStatus, onRunningChan
       <TouchControls
         enabled={settings.touchControls && touchSurface}
         running={phase === "running"}
+        profile={inputProfile}
         onButton={onTouchButton}
         onRunToggle={toggleRun}
         onReset={reset}
