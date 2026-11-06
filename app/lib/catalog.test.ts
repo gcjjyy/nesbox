@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { arrangeGames, isKoreanEdition } from "./catalog";
+import {
+  arrangeGames,
+  catalogCategoryForGame,
+  catalogCounts,
+  filterRecentGames,
+  isKoreanEdition,
+} from "./catalog";
 import type { GameEntry } from "./game-types";
 
 function game(id: string, title: string, addedAt: number, extra: Partial<GameEntry> = {}): GameEntry {
@@ -59,5 +65,36 @@ describe("isKoreanEdition", () => {
     expect(isKoreanEdition("Kickle Cubicle (U)")).toBe(false);
     expect(isKoreanEdition("Dr. Mario (JU)")).toBe(false);
     expect(isKoreanEdition("HOG TANUKI")).toBe(false);
+  });
+});
+
+describe("catalog categories", () => {
+  const mixed = [
+    game("nes", "Contra", 1),
+    game("mame", "Metal Slug", 2, { system: "arcade", emulatorId: "mame2003-plus", fileName: "mslug.zip" }),
+    game("fbneo", "Street Fighter II", 3, { system: "arcade", emulatorId: "fbneo", fileName: "sf2.zip" }),
+    game("snes", "Street Fighter II SNES", 4, { system: "snes", emulatorId: "snes9x", fileName: "sf2.sfc" }),
+  ];
+
+  it("counts all games while grouping both arcade cores under MAME", () => {
+    expect(catalogCounts(mixed)).toEqual({ all: 4, nes: 1, mame: 2 });
+    expect(catalogCategoryForGame(mixed[0])).toBe("nes");
+    expect(catalogCategoryForGame(mixed[1])).toBe("mame");
+    expect(catalogCategoryForGame(mixed[2])).toBe("mame");
+    expect(catalogCategoryForGame(mixed[3])).toBeNull();
+  });
+
+  it("applies search only after category selection and preserves sort/pin rules", () => {
+    expect(arrangeGames(mixed, "title", "street fighter", "mame").map((entry) => entry.id)).toEqual(["fbneo"]);
+    expect(arrangeGames(mixed, "title", "street fighter", "nes")).toEqual([]);
+    expect(arrangeGames(mixed, "added-desc", "", "mame").map((entry) => entry.id)).toEqual(["fbneo", "mame"]);
+  });
+
+  it("filters recent games by category and query without changing recent-first order", () => {
+    const recent = [mixed[3], mixed[1], mixed[0], mixed[2]].map((entry, index) => ({ game: entry, playedAt: 100 - index }));
+
+    expect(filterRecentGames(recent, "", "mame").map((entry) => entry.game.id)).toEqual(["mame", "fbneo"]);
+    expect(filterRecentGames(recent, "metal", "mame").map((entry) => entry.game.id)).toEqual(["mame"]);
+    expect(recent.map((entry) => entry.game.id)).toEqual(["snes", "mame", "nes", "fbneo"]);
   });
 });

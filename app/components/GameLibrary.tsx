@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Check, ChevronDown, Clock, Database, LayoutGrid, Play, Plus, Search } from "lucide-react";
-import { arrangeGames, CATALOG_SORTS, isKoreanEdition, type CatalogSort } from "../lib/catalog";
+import {
+  arrangeGames,
+  catalogCategoryForGame,
+  catalogCounts,
+  CATALOG_SORTS,
+  filterRecentGames,
+  isKoreanEdition,
+  type CatalogCategory,
+  type CatalogSort,
+} from "../lib/catalog";
 import { emulatorById } from "../lib/emulator-registry";
 import { coverUrl } from "../lib/library-client";
 import { formatBytes } from "../lib/rom";
@@ -29,14 +38,15 @@ const SMALL_ICON = { size: 14, strokeWidth: 2, "aria-hidden": true } as const;
 
 export function GameLibrary({ games, recent, importing, status, onAdd, onImportOpenEmu, onLaunch }: GameLibraryProps) {
   const [tab, setTab] = useState<Tab>("all");
+  const [category, setCategory] = useState<CatalogCategory>("all");
   const [sort, setSort] = useState<CatalogSort>("title");
   const [query, setQuery] = useState("");
+  const counts = useMemo(() => catalogCounts(games), [games]);
 
   const visible = useMemo(() => {
-    if (tab === "all") return arrangeGames(games, sort, query).map((game) => ({ game, playedAt: null }));
-    const matches = new Set(arrangeGames(recent.map((entry) => entry.game), "title", query).map((game) => game.id));
-    return recent.filter((entry) => matches.has(entry.game.id));
-  }, [tab, games, recent, sort, query]);
+    if (tab === "all") return arrangeGames(games, sort, query, category).map((game) => ({ game, playedAt: null }));
+    return filterRecentGames(recent, query, category);
+  }, [tab, games, recent, sort, query, category]);
 
   return (
     <section className="game-library" aria-label="게임 라이브러리">
@@ -70,6 +80,19 @@ export function GameLibrary({ games, recent, importing, status, onAdd, onImportO
             <span>{recent.length}</span>
           </button>
         </div>
+        <div className="catalog-categories" role="group" aria-label="게임 카테고리">
+          {(["all", "nes", "mame"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={category === value}
+              onClick={() => setCategory(value)}
+            >
+              {value.toUpperCase()}
+              <span>{counts[value]}</span>
+            </button>
+          ))}
+        </div>
         <div className="catalog-tools">
           <label className="catalog-search">
             <Search {...SMALL_ICON} />
@@ -86,24 +109,33 @@ export function GameLibrary({ games, recent, importing, status, onAdd, onImportO
           ) : (
             <span className="catalog-hint">이 브라우저에서 플레이한 순서</span>
           )}
+          <span className="catalog-result-count" aria-live="polite">{visible.length}개 표시</span>
         </div>
       </div>
 
       <div className="catalog-scroll">
         {visible.length === 0 ? (
           <div className="library-empty">
-            {tab === "recent" && !query ? (
-              <>
-                <strong>아직 플레이한 게임이 없어요</strong>
-                <span>게임을 실행하면 이 브라우저에 기록되어 여기에 표시됩니다.</span>
-              </>
-            ) : games.length === 0 ? (
+            {games.length === 0 ? (
               <>
                 <strong>No games</strong>
                 <span>OpenEmu에서 가져오거나 ROM을 추가하면 SQLite 라이브러리에 저장됩니다.</span>
               </>
+            ) : tab === "recent" && recent.length === 0 && !query && category === "all" ? (
+              <>
+                <strong>아직 플레이한 게임이 없어요</strong>
+                <span>게임을 실행하면 이 브라우저에 기록되어 여기에 표시됩니다.</span>
+              </>
+            ) : tab === "recent" && !query ? (
+              <>
+                <strong>{categoryLabel(category)} 최근 게임이 없습니다.</strong>
+                <span>선택한 카테고리의 게임을 실행하면 여기에 표시됩니다.</span>
+              </>
             ) : (
-              <strong>검색 결과가 없습니다.</strong>
+              <>
+                <strong>{categoryLabel(category)} 검색 결과가 없습니다.</strong>
+                <span>검색어 또는 카테고리를 바꿔보세요.</span>
+              </>
             )}
           </div>
         ) : (
@@ -148,6 +180,8 @@ function GameCard({ game, playedAt, onLaunch }: { game: GameEntry; playedAt: num
   const emulator = emulatorById(game.emulatorId);
   const showCover = game.hasCover && !coverFailed;
   const src = coverUrl(game.id);
+  const category = catalogCategoryForGame(game);
+  const isArcade = category === "mame";
 
   // 하이드레이션 전에 이미 로드된 이미지는 onLoad가 오지 않으므로 마운트 시점에도 확인한다.
   useEffect(() => {
@@ -158,7 +192,7 @@ function GameCard({ game, playedAt, onLaunch }: { game: GameEntry; playedAt: num
   return (
     <button
       type="button"
-      className="cart"
+      className={`cart${isArcade ? " cart--arcade" : ""}`}
       style={{ "--shell": shellColorFor(game.id) } as CSSProperties}
       onClick={() => onLaunch(game.id)}
       aria-label={`${game.title} 실행`}
@@ -170,7 +204,7 @@ function GameCard({ game, playedAt, onLaunch }: { game: GameEntry; playedAt: num
               {showCover ? (
                 <img
                   ref={artRef}
-                  className={portrait ? "cart__label-art cart__label-art--portrait" : "cart__label-art"}
+                  className={portrait && !isArcade ? "cart__label-art cart__label-art--portrait" : "cart__label-art"}
                   src={src}
                   alt=""
                   loading="lazy"
@@ -194,7 +228,7 @@ function GameCard({ game, playedAt, onLaunch }: { game: GameEntry; playedAt: num
         {game.originalTitle && <small title={game.originalTitle}>{game.originalTitle}</small>}
         <span className="cart__meta">
           {isKoreanEdition(game.title) && <span className="cart__korean">한글</span>}
-          <span>{game.system.toUpperCase()}</span>
+          <span className="cart__category">{category?.toUpperCase() ?? game.system.toUpperCase()}</span>
           <span>{emulator?.shortName ?? game.emulatorId}</span>
           <span>{formatBytes(game.size)}</span>
         </span>
@@ -202,6 +236,10 @@ function GameCard({ game, playedAt, onLaunch }: { game: GameEntry; playedAt: num
       </span>
     </button>
   );
+}
+
+function categoryLabel(category: CatalogCategory): string {
+  return category === "all" ? "전체" : category.toUpperCase();
 }
 
 /** 박스아트가 없는 게임용 라벨: 초기 패미컴 은색 라벨 스타일 */
