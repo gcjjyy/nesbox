@@ -29,6 +29,7 @@ describe("settings keyboard migration", () => {
       touchControls: false,
       keyBindingsVersion: 1,
       keyBindings: DEFAULT_KEY_BINDINGS,
+      gamepad: { selectedDevice: null, devices: {} },
     });
   });
 
@@ -55,5 +56,13 @@ describe("settings keyboard migration", () => {
 
     writeSettings(DEFAULT_SETTINGS);
     expect(JSON.parse(values.get("nesbox:settings")!)).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it("persists device mappings and ignores malformed joystick settings", () => {
+    const gamepad = { selectedDevice: "usb", devices: { usb: { nes: { a: [{ kind: "button" as const, index: 7 }] } } } };
+    writeSettings({ ...DEFAULT_SETTINGS, gamepad });
+    expect(readSettings().gamepad).toEqual(gamepad);
+    values.set("nesbox:settings", JSON.stringify({ gamepad: { devices: false } }));
+    expect(readSettings().gamepad).toEqual({ selectedDevice: null, devices: {} });
   });
 });

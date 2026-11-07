@@ -11,7 +11,7 @@ Personal browser emulator library for NES and arcade cores.
 - FCEUX NES WASM bridge
 - EmulatorJS MAME 2003-Plus and FBNeo arcade bridge
 - Responsive game library and dedicated play route
-- Keyboard, touch, and standard gamepad input
+- Keyboard, touch, and USB/Bluetooth joystick input with per-device mappings
 - `ALL / NES / MAME` category filtering with category-scoped search
 - Per-core keyboard guides and persistent key customization
 
@@ -82,6 +82,15 @@ the apply report.
   `Z X C / A S D`.
 - Standard gamepads use the d-pad/left stick, Back/View, Start/Menu, and MAME
   face/shoulder button indices 0–5.
+- Connect a joystick/gamepad and press a button once while this page is focused.
+  In Settings → 조이스틱 / 게임패드, check the connection or select a device.
+  Use 조이스틱 버튼 설정 to assign each direction, action, Coin/Select and Start
+  by pressing a hardware button or moving an axis. NES and MAME mappings are
+  saved separately for each device in this browser; 기본값 복원 resets that profile.
+  The input preview lets you check assignments without controlling the game.
+- Joysticks must be exposed by the browser's Gamepad API (HTTPS or localhost).
+  Generic devices with different layouts can use custom button/axis assignments.
+  Keyboard-emulating USB controllers can use the existing keyboard settings.
 
 Keyboard assignments are edited per profile in Settings and stored in browser
 local storage. Save states remain in IndexedDB.

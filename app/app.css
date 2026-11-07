@@ -1937,6 +1937,37 @@ button {
   font-size: 12px;
 }
 
+.gamepad-settings__status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.gamepad-settings__select {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.gamepad-settings__select select {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--panel-2);
+}
+
+.gamepad-settings .key-binding-button {
+  padding: 5px;
+  overflow-wrap: anywhere;
+}
+
 .error-page {
   display: grid;
   min-height: 100dvh;

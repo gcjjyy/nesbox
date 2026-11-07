@@ -5,12 +5,13 @@ import {
   controlProfileForGame,
   createKeyboardInputRouter,
   createPressedInputTracker,
-  gamepadMapForProfile,
   keyboardMapForProfile,
   type ControlProfileId,
   type KeyboardInputRouter,
   type PressedInputTracker,
 } from "../lib/control-profiles";
+import { readConnectedGamepads, readGamepadButtons, selectGamepad } from "../lib/gamepad-input";
+import { createInputMixer } from "../lib/input-mixer";
 import { recoverAudioCore } from "../lib/audio-core-recovery";
 import { AudioContextPreparationError, createCore, drawCoreMissing, makeUnavailableCore } from "../lib/core-loader";
 import { loadAssignedCore } from "../lib/core-load-finalizer";
@@ -47,8 +48,6 @@ export interface EmulatorStageProps {
   onSavedStateChange?: (hasSavedState: boolean) => void;
   ref?: Ref<EmulatorStageHandle>;
 }
-
-const GAMEPAD_AXIS_THRESHOLD = 0.45;
 
 // em-fceux는 위아래 오버스캔을 뺀 224줄을 8:7 픽셀 비율로 출력한다(292x224).
 // 화면 틀을 처음부터 이 비율로 잡아야 코어가 맞춘 캔버스와 틀이 어긋나지 않는다.
@@ -94,6 +93,7 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
   const inputSuspendedRef = useRef(inputSuspended);
   const keyboardRouterRef = useRef<KeyboardInputRouter | null>(null);
   const gamepadTrackerRef = useRef<PressedInputTracker | null>(null);
+  const inputMixerRef = useRef<ReturnType<typeof createInputMixer> | null>(null);
   const fetchAbortRef = useRef<AbortController | null>(null);
   const [phase, setPhase] = useState<EmulatorPhase>("idle");
   const [audioUnlocking, setAudioUnlocking] = useState(false);
@@ -110,19 +110,22 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
   settingsRef.current = settings;
   inputSuspendedRef.current = inputSuspended;
 
+  if (!inputMixerRef.current) {
+    inputMixerRef.current = createInputMixer((button, pressed) => coreRef.current?.setButton(0, button, pressed));
+  }
   if (!keyboardRouterRef.current) {
     keyboardRouterRef.current = createKeyboardInputRouter({
       resolveButton: (code) => keyboardMapForProfile(
         settingsRef.current.keyBindings,
         inputProfileRef.current,
       ).get(code),
-      send: (button, pressed) => coreRef.current?.setButton(0, button, pressed),
+      send: (button, pressed) => inputMixerRef.current?.set("keyboard", button, pressed),
       isSuspended: () => inputSuspendedRef.current,
     });
   }
   if (!gamepadTrackerRef.current) {
     gamepadTrackerRef.current = createPressedInputTracker(
-      (button, pressed) => coreRef.current?.setButton(0, button, pressed),
+      (button, pressed) => inputMixerRef.current?.set("gamepad", button, pressed),
     );
   }
 
@@ -172,26 +175,11 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
   useEffect(() => {
     let raf = 0;
 
-    function setGamepadButton(next: Set<NesboxButton>, button: NesboxButton, pressed: boolean) {
-      if (pressed) next.add(button);
-      else next.delete(button);
-    }
-
     function readGamepad() {
-      const next = new Set<NesboxButton>();
-      const gamepads = navigator.getGamepads?.() ?? [];
-      const gamepad = Array.from(gamepads).find((item): item is Gamepad => Boolean(item));
-      if (gamepad && !inputSuspendedRef.current) {
-        for (const [index, button] of gamepadMapForProfile(inputProfileRef.current)) {
-          setGamepadButton(next, button, Boolean(gamepad.buttons[index]?.pressed));
-        }
-        const xAxis = gamepad.axes[0] ?? 0;
-        const yAxis = gamepad.axes[1] ?? 0;
-        setGamepadButton(next, "left", xAxis < -GAMEPAD_AXIS_THRESHOLD);
-        setGamepadButton(next, "right", xAxis > GAMEPAD_AXIS_THRESHOLD);
-        setGamepadButton(next, "up", yAxis < -GAMEPAD_AXIS_THRESHOLD);
-        setGamepadButton(next, "down", yAxis > GAMEPAD_AXIS_THRESHOLD);
-      }
+      const gamepad = selectGamepad(readConnectedGamepads().devices, settingsRef.current.gamepad.selectedDevice);
+      const next = gamepad && coreRef.current && !inputSuspendedRef.current && !document.hidden && document.hasFocus()
+        ? readGamepadButtons(gamepad, inputProfileRef.current, settingsRef.current.gamepad)
+        : new Set<NesboxButton>();
 
       const previous = gamepadButtonsRef.current;
       for (const button of previous) {
@@ -583,14 +571,15 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
   }
 
   function onTouchButton(button: NesboxButton, pressed: boolean) {
-    if (inputSuspendedRef.current) return;
-    coreRef.current?.setButton(0, button, pressed);
+    if (pressed && inputSuspendedRef.current) return;
+    inputMixerRef.current?.set("touch", button, pressed);
   }
 
   function releaseAllTrackedInput() {
     keyboardRouterRef.current?.releaseAll();
     gamepadTrackerRef.current?.releaseAll();
     gamepadButtonsRef.current.clear();
+    inputMixerRef.current?.releaseAll();
   }
 
   function switchInputProfile(next: ControlProfileId) {

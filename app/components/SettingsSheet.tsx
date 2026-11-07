@@ -10,6 +10,7 @@ import {
 } from "../lib/control-profiles";
 import type { UserSettings } from "../lib/storage";
 import { ControlGuideTabs } from "./ControlGuideTabs";
+import { GamepadSettings } from "./GamepadSettings";
 
 const ICON = { size: 16, strokeWidth: 1.9, "aria-hidden": true } as const;
 
@@ -96,7 +97,7 @@ export function SettingsSheet({ open, settings, onChange, onClose }: SettingsShe
       if (editing) finishEditing();
       else onClose();
     } else if (event.key === "Tab") {
-      const buttons = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled]), [tabindex='0']")]
+      const buttons = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex='0']")]
         .filter((node) => node.tabIndex >= 0);
       const first = buttons[0];
       const last = buttons.at(-1);
@@ -197,6 +198,7 @@ export function SettingsSheet({ open, settings, onChange, onClose }: SettingsShe
               <Keyboard {...ICON} />키 매핑 변경
             </button>
           </div>
+          <GamepadSettings settings={settings} onChange={onChange} />
         </>}
       </section>
     </div>

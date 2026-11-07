@@ -1,4 +1,5 @@
 import { DEFAULT_KEY_BINDINGS, normalizeKeyboardBindings, type KeyboardBindings } from "./control-profiles";
+import { normalizeGamepadSettings, type GamepadSettings } from "./gamepad-input";
 
 const SETTINGS_KEY = "nesbox:settings";
 
@@ -8,6 +9,7 @@ export interface UserSettings {
   touchControls: boolean;
   keyBindingsVersion: 1;
   keyBindings: KeyboardBindings;
+  gamepad: GamepadSettings;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -16,6 +18,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   touchControls: true,
   keyBindingsVersion: 1,
   keyBindings: DEFAULT_KEY_BINDINGS,
+  gamepad: { selectedDevice: null, devices: {} },
 };
 
 export function readSettings(): UserSettings {
@@ -28,6 +31,7 @@ export function readSettings(): UserSettings {
       touchControls: Boolean(parsed.touchControls ?? DEFAULT_SETTINGS.touchControls),
       keyBindingsVersion: 1,
       keyBindings: normalizeKeyboardBindings(parsed.keyBindings),
+      gamepad: normalizeGamepadSettings(parsed.gamepad),
     };
   } catch {
     return cloneDefaultSettings();
@@ -38,6 +42,7 @@ function cloneDefaultSettings(): UserSettings {
   return {
     ...DEFAULT_SETTINGS,
     keyBindings: normalizeKeyboardBindings(DEFAULT_KEY_BINDINGS),
+    gamepad: normalizeGamepadSettings(null),
   };
 }
 
