@@ -19,3 +19,15 @@ export async function exitPlayerFullscreen(): Promise<void> {
   const exit = document.exitFullscreen ?? (document as FullscreenDocument).webkitExitFullscreen;
   try { await exit?.call(document); } catch { /* The browser may have already exited. */ }
 }
+
+// Safari's visible viewport changes independently of the layout viewport when
+// its address bar appears, including during a device rotation.
+export function playerViewport() {
+  const visual = window.visualViewport;
+  return {
+    width: visual?.width || window.innerWidth,
+    height: visual?.height || window.innerHeight,
+    left: visual?.offsetLeft ?? 0,
+    top: visual?.offsetTop ?? 0,
+  };
+}

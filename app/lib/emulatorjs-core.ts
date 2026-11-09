@@ -268,6 +268,7 @@ export const browserEmulatorJsBridge: EmulatorJsBridge = {
       if (frame.parentElement === config.hostElement) {
         delete config.hostElement.dataset.nesboxVideoWidth;
         delete config.hostElement.dataset.nesboxVideoHeight;
+        delete config.hostElement.dataset.nesboxVideoAspect;
       }
       frame.remove();
     };
@@ -521,6 +522,7 @@ function wrapRawInstance(
   if (videoWidth && videoHeight) {
     hostElement.dataset.nesboxVideoWidth = String(Math.round(videoWidth));
     hostElement.dataset.nesboxVideoHeight = String(Math.round(videoHeight));
+    hostElement.dataset.nesboxVideoAspect = String(manager().getVideoDimensions?.("aspect") ?? 0);
   }
   return {
     pause: () => raw.pause?.(),
@@ -571,6 +573,7 @@ function wrapRawInstance(
       capturedUrls.clear();
       delete hostElement.dataset.nesboxVideoWidth;
       delete hostElement.dataset.nesboxVideoHeight;
+      delete hostElement.dataset.nesboxVideoAspect;
       hostElement.replaceChildren();
     },
   };

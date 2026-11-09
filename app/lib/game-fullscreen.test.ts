@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { fullscreenLayout, requestPlayerFullscreen } from './game-fullscreen';
+import { fullscreenLayout, playerViewport, requestPlayerFullscreen } from './game-fullscreen';
 import { stickButtons } from './touch-stick';
 it('fits landscape and portrait games with rotation only on a mismatched touch screen', () => {
  expect(fullscreenLayout(390,844,384,224,true)).toEqual({width:844,height:390,rotation:90,orientation:'landscape'});
@@ -19,4 +19,20 @@ it('keeps joystick directions relative to the rotated game', () => {
  expect([...stickButtons(50,95,rect,90)]).toEqual(['right']);
  expect([...stickButtons(95,50,rect,90)]).toEqual(['up']);
  expect([...stickButtons(50,5,rect,-90)]).toEqual(['right']);
+});
+
+it('fits the visible Safari viewport when browser chrome reduces its height', () => {
+  vi.stubGlobal('window', {
+    innerWidth: 844, innerHeight: 390,
+    visualViewport: { width: 844, height: 320, offsetLeft: 0, offsetTop: 12 },
+  });
+  try {
+    expect(playerViewport()).toEqual({ width: 844, height: 320, left: 0, top: 12 });
+  } finally { vi.unstubAllGlobals(); }
+});
+it('uses the window dimensions when VisualViewport is unavailable', () => {
+  vi.stubGlobal('window', { innerWidth: 390, innerHeight: 844 });
+  try {
+    expect(playerViewport()).toEqual({ width: 390, height: 844, left: 0, top: 0 });
+  } finally { vi.unstubAllGlobals(); }
 });

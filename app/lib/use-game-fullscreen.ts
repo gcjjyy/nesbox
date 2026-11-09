@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
-import { exitPlayerFullscreen, fullscreenLayout, playerFullscreenElement, requestPlayerFullscreen } from './game-fullscreen';
+import { exitPlayerFullscreen, fullscreenLayout, playerFullscreenElement, playerViewport, requestPlayerFullscreen } from './game-fullscreen';
 
 export function useGameFullscreen(host: RefObject<HTMLElement | null>, game: { width: number; height: number }, touch: boolean) {
   const [active, setActive] = useState(false);
-  const [viewport, setViewport] = useState({ width: 1, height: 1 });
+  const [viewport, setViewport] = useState({ width: 1, height: 1, left: 0, top: 0 });
   const native = useRef(false);
   const [nativeReady, setNativeReady] = useState(false);
   const generation = useRef(0);
@@ -28,7 +28,7 @@ export function useGameFullscreen(host: RefObject<HTMLElement | null>, game: { w
     const node = host.current;
     if (!node) return;
     const attempt = ++generation.current;
-    setViewport({ width: window.innerWidth, height: window.innerHeight });
+    setViewport(playerViewport());
     setActive(true);
     const accepted = await requestPlayerFullscreen(node);
     if (attempt !== generation.current) {
@@ -38,34 +38,48 @@ export function useGameFullscreen(host: RefObject<HTMLElement | null>, game: { w
     native.current = accepted;
     setNativeReady(accepted);
     // Trigger the orientation effect once native fullscreen is available.
-    setViewport({ width: window.innerWidth, height: window.innerHeight });
+    setViewport(playerViewport());
   }, [active, exit, host]);
 
   useEffect(() => {
     if (!active) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const resize = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
+    const scrollRoots = [document.documentElement, document.body];
+    const previousOverflow = scrollRoots.map((element) => element.style.overflow);
+    scrollRoots.forEach((element) => { element.style.overflow = 'hidden'; });
+    const resize = () => setViewport(playerViewport());
     const changed = () => {
-      if (native.current && playerFullscreenElement() !== host.current) void exit();
+      if (native.current && playerFullscreenElement() !== host.current) {
+        native.current = false;
+        setNativeReady(false);
+        unlock();
+        // Mobile browsers can drop native fullscreen on rotation. Keep the page
+        // player open; the exit button/Escape still explicitly leaves this mode.
+        if (!touch) void exit();
+      }
       resize();
     };
     const key = (event: KeyboardEvent) => { if (event.key === 'Escape') void exit(); };
     resize();
     window.addEventListener('resize', resize);
     window.visualViewport?.addEventListener('resize', resize);
+    window.visualViewport?.addEventListener('scroll', resize);
+    window.addEventListener('orientationchange', resize);
+    screen.orientation?.addEventListener('change', resize);
     window.addEventListener('keydown', key);
     document.addEventListener('fullscreenchange', changed);
     document.addEventListener('webkitfullscreenchange', changed);
     return () => {
-      document.body.style.overflow = previousOverflow;
+      scrollRoots.forEach((element, index) => { element.style.overflow = previousOverflow[index]; });
       window.removeEventListener('resize', resize);
       window.visualViewport?.removeEventListener('resize', resize);
+      window.visualViewport?.removeEventListener('scroll', resize);
+      window.removeEventListener('orientationchange', resize);
+      screen.orientation?.removeEventListener('change', resize);
       window.removeEventListener('keydown', key);
       document.removeEventListener('fullscreenchange', changed);
       document.removeEventListener('webkitfullscreenchange', changed);
     };
-  }, [active, exit, host]);
+  }, [active, exit, host, touch, unlock]);
 
   useEffect(() => {
     if (!active || !touch || !nativeReady) return;
@@ -88,5 +102,5 @@ export function useGameFullscreen(host: RefObject<HTMLElement | null>, game: { w
     };
   }, [host, unlock]);
 
-  return { active, layout, toggle, exit };
+  return { active, layout, viewport, toggle, exit };
 }

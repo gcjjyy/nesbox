@@ -2482,11 +2482,12 @@ button {
 
 .emulator-stage.emulator-stage--fullscreen {
   position: fixed;
-  inset: 0;
+  left: var(--fullscreen-left);
+  top: var(--fullscreen-top);
   z-index: 1000;
   display: block;
-  width: 100%;
-  height: 100dvh;
+  width: var(--fullscreen-viewport-width);
+  height: var(--fullscreen-viewport-height);
   max-height: none;
   margin: 0;
   padding: 0;
@@ -2541,18 +2542,18 @@ button {
 .emulator-stage--fullscreen .touch-controls > * { pointer-events: auto; }
 .emulator-stage--fullscreen .touch-controls__center {
   grid-column: 1 / -1;
-  grid-row: 1;
+  grid-row: 2;
   gap: 6px;
 }
 .emulator-stage--fullscreen .touch-controls__cluster--dpad {
   grid-column: 1;
-  grid-row: 2;
+  grid-row: 1;
   width: clamp(108px, 34cqw, 150px);
   height: clamp(108px, 34cqw, 150px);
 }
 .emulator-stage--fullscreen .touch-controls__cluster--face {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 1;
   width: auto;
   grid-template-columns: repeat(2, var(--overlay-key));
   grid-template-rows: repeat(2, var(--overlay-key));
@@ -2578,3 +2579,7 @@ button {
 .emulator-stage--fullscreen .touch-button--wide { width: 62px; min-width: 0; height: 34px; }
 .emulator-stage--fullscreen .touch-action { width: 32px; height: 34px; }
 .emulator-stage--fullscreen .audio-unlock { z-index: 5; }
+
+.emulator-stage--fullscreen[data-fullscreen-orientation="portrait"] .touch-controls--mame {
+  --overlay-key: clamp(36px, 14cqw, 64px);
+}

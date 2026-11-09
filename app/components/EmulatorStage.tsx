@@ -1,5 +1,6 @@
 import { useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type Ref } from "react";
 import { Minimize, Volume2 } from "lucide-react";
+import { arcadeDisplaySize } from "../lib/arcade-video";
 import { useGameFullscreen } from "../lib/use-game-fullscreen";
 import type { NesboxButton, NesboxCore, EmulatorPhase } from "../lib/core-contract";
 import {
@@ -228,7 +229,7 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
     observer.observe(canvas, { attributes: true, attributeFilter: ["height", "style", "width"] });
     observer.observe(emulatorJsHost, {
       attributes: true,
-      attributeFilter: ["data-nesbox-video-height", "data-nesbox-video-width", "height", "style", "width"],
+      attributeFilter: ["data-nesbox-video-height", "data-nesbox-video-width", "data-nesbox-video-aspect", "height", "style", "width"],
       childList: true,
       subtree: true,
     });
@@ -296,11 +297,11 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
       if (!host) return;
       const width = Number(host.dataset.nesboxVideoWidth);
       const height = Number(host.dataset.nesboxVideoHeight);
-      const aspect = width / height;
-      // EmulatorJS stretches its canvas to the host, so the bridge exposes the core's own
-      // framebuffer dimensions. Feeding CSS canvas sizes back here causes a resize loop.
-      if (width > 0 && height > 0 && aspect >= 0.5 && aspect <= 2.5) {
-        setScreenPixels((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
+      // Use the core's display aspect: framebuffer pixels need not be square.
+      // Reading the stretched CSS canvas here would also cause a resize loop.
+      const next = arcadeDisplaySize(width, height, Number(host.dataset.nesboxVideoAspect));
+      if (next) {
+        setScreenPixels((prev) => (prev.width === next.width && prev.height === next.height ? prev : next));
       }
       return;
     }
@@ -595,6 +596,10 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
     "--screen-aspect": `${screenPixels.width} / ${screenPixels.height}`,
     "--screen-width": screenPixels.width,
     "--screen-height": screenPixels.height,
+    "--fullscreen-viewport-width": `${fullscreenView.viewport.width}px`,
+    "--fullscreen-viewport-height": `${fullscreenView.viewport.height}px`,
+    "--fullscreen-left": `${fullscreenView.viewport.left}px`,
+    "--fullscreen-top": `${fullscreenView.viewport.top}px`,
     "--fullscreen-width": `${fullscreenView.layout.width}px`,
     "--fullscreen-height": `${fullscreenView.layout.height}px`,
     "--fullscreen-rotation": `${fullscreenView.layout.rotation}deg`,
