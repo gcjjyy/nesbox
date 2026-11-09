@@ -1,5 +1,6 @@
 import {
   CircleHelp,
+  Download,
   Gamepad2,
   Settings,
   Volume2,
@@ -24,12 +25,14 @@ export interface ToolbarProps {
   onReset: () => void;
   onSave: () => void;
   onFullscreen: () => void;
+  onInstall: () => void;
   onHelp: () => void;
   onSettings: () => void;
 }
 
 export function Toolbar({
   mode,
+  onInstall,
   onHelp,
   onSettings,
   onFullscreen,
@@ -58,6 +61,9 @@ export function Toolbar({
         {mode === "player" && (
           <span className="toolbar__mode" aria-label="플레이 모드">PLAY</span>
         )}
+        <button type="button" className="icon-button" onClick={onInstall} title="홈 화면 설치 안내" aria-label="홈 화면 설치 안내" aria-haspopup="dialog">
+          <Download {...ICON} />
+        </button>
         <button type="button" className="icon-button" onClick={onHelp} title="도움말" aria-label="도움말">
           <CircleHelp {...ICON} />
         </button>

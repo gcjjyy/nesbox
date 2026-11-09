@@ -2591,3 +2591,86 @@ button {
 .emulator-stage--fullscreen[data-fullscreen-orientation="portrait"] .touch-controls__cluster--face {
   grid-row: 2;
 }
+
+.install-guide {
+  width: min(480px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 24px 80px var(--shadow);
+}
+.install-guide::backdrop { background: rgba(0, 0, 0, .72); }
+.install-guide header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.install-guide h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 18px;
+}
+.install-guide header p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.install-guide .icon-button { flex-shrink: 0; }
+.install-guide__body { padding: 20px; }
+.install-guide h3 { margin: 0 0 16px; font-size: 14px; }
+.install-guide__steps {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.install-guide__steps li {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.install-guide__steps li > span {
+  display: grid;
+  place-items: center;
+  height: 26px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--red) 16%, var(--panel-2));
+  color: var(--red-2);
+  font: 600 12px var(--font-mono);
+}
+.install-guide__steps strong { color: var(--cream); }
+.install-guide__steps svg { display: inline; vertical-align: -2px; }
+.install-guide__note {
+  margin: 20px 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.install-guide__android { border-top: 1px solid var(--line); padding-top: 16px; }
+.install-guide__android summary { cursor: pointer; font-size: 13px; }
+.install-guide__android p { margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+@media (max-width: 360px) {
+  .toolbar { padding-inline: 8px; }
+  .toolbar__brand { gap: 5px; font-size: 11px; }
+  .toolbar__brand > svg { width: 15px; flex-shrink: 0; }
+  .toolbar__actions { gap: 4px; flex-shrink: 0; }
+  .install-guide header, .install-guide__body { padding: 16px; }
+}

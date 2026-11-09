@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import type { Route } from "./+types/_index";
 import { GameLibrary } from "../components/GameLibrary";
+import { InstallGuideDialog } from "../components/InstallGuideDialog";
 import { HelpDialog } from "../components/HelpDialog";
 import { WelcomeDialog } from "../components/WelcomeDialog";
 import { SettingsSheet } from "../components/SettingsSheet";
@@ -33,6 +34,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
   const [games, setGames] = useState<GameEntry[]>(loaderData.games);
   const [recentPlays, setRecentPlays] = useState<RecentPlay[]>([]);
   const recent = useMemo(() => recentGames(games, recentPlays), [games, recentPlays]);
+  const [installOpen, setInstallOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<UserSettings>(() => readSettings());
@@ -70,6 +72,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
         onReset={() => undefined}
         onSave={() => undefined}
         onFullscreen={() => undefined}
+        onInstall={() => setInstallOpen(true)}
         onHelp={() => setHelpOpen(true)}
         onSettings={() => setSettingsOpen(true)}
       />
@@ -87,6 +90,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
         onChange={updateSettings}
         onClose={() => setSettingsOpen(false)}
       />
+      <InstallGuideDialog open={installOpen} onClose={() => setInstallOpen(false)} />
       <HelpDialog open={helpOpen} bindings={settings.keyBindings} onClose={() => setHelpOpen(false)} />
       <WelcomeDialog bindings={settings.keyBindings} />
     </div>

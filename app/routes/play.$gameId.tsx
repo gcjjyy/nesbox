@@ -3,6 +3,7 @@ import { ArrowLeft, FolderInput, Maximize, RotateCcw, Save } from "lucide-react"
 import { useNavigate } from "react-router";
 import type { Route } from "./+types/play.$gameId";
 import { EmulatorStage, type EmulatorStageHandle } from "../components/EmulatorStage";
+import { InstallGuideDialog } from "../components/InstallGuideDialog";
 import { HelpDialog } from "../components/HelpDialog";
 import { WelcomeDialog } from "../components/WelcomeDialog";
 import { LibraryPanel } from "../components/LibraryPanel";
@@ -33,6 +34,7 @@ export default function Play({ loaderData }: Route.ComponentProps) {
   const [recent, setRecent] = useState<GameEntry[]>([]);
   const [running, setRunning] = useState(false);
   const [hasSavedState, setHasSavedState] = useState(false);
+  const [installOpen, setInstallOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<UserSettings>(() => readSettings());
@@ -97,6 +99,7 @@ export default function Play({ loaderData }: Route.ComponentProps) {
         onReset={() => stageRef.current?.reset()}
         onSave={saveState}
         onFullscreen={() => stageRef.current?.fullscreen()}
+        onInstall={() => setInstallOpen(true)}
         onHelp={() => setHelpOpen(true)}
         onSettings={() => setSettingsOpen(true)}
       />
@@ -128,7 +131,7 @@ export default function Play({ loaderData }: Route.ComponentProps) {
         <EmulatorStage
           ref={stageRef}
           settings={settings}
-          inputSuspended={settingsOpen}
+          inputSuspended={settingsOpen || installOpen}
           onPhaseChange={() => undefined}
           onStatus={setStatus}
           onRunningChange={setRunning}
@@ -142,6 +145,7 @@ export default function Play({ loaderData }: Route.ComponentProps) {
         onChange={updateSettings}
         onClose={() => setSettingsOpen(false)}
       />
+      <InstallGuideDialog open={installOpen} onClose={() => setInstallOpen(false)} />
       <HelpDialog open={helpOpen} bindings={settings.keyBindings} onClose={() => setHelpOpen(false)} />
       <WelcomeDialog bindings={settings.keyBindings} />
     </div>
