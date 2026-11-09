@@ -14,6 +14,7 @@ interface TouchControlsProps {
   onSave: () => void;
   onLoad: () => void;
   canLoad: boolean;
+  rotation?: number;
 }
 
 // NES에는 A/B만 있으므로 Y/X 대신 윗줄 전체를 A+B 동시 입력 버튼으로 쓴다(열혈 시리즈 점프 등).
@@ -44,7 +45,7 @@ interface TouchHit {
   stick: boolean;
 }
 
-export function TouchControls({ enabled, running, profile, onButton, onRunToggle, onReset, onSave, onLoad, canLoad }: TouchControlsProps) {
+export function TouchControls({ enabled, running, profile, onButton, onRunToggle, onReset, onSave, onLoad, canLoad, rotation = 0 }: TouchControlsProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const activePointersRef = useRef(new Map<number, ButtonSet>());
   // 스틱에서 시작한 터치는 손을 뗄 때까지 스틱에 묶어 둔다.
@@ -61,7 +62,7 @@ export function TouchControls({ enabled, running, profile, onButton, onRunToggle
     return () => releaseAllButtons(false);
   }, []);
 
-  useEffect(() => releaseAllButtons, [profile]);
+  useEffect(() => releaseAllButtons, [profile, rotation]);
 
   useEffect(() => {
     if (!enabled || !running) releaseAllButtons();
@@ -107,7 +108,7 @@ export function TouchControls({ enabled, running, profile, onButton, onRunToggle
     if (stickNode) {
       const stickRect = stickNode.getBoundingClientRect();
       const inside = x >= stickRect.left && x <= stickRect.right && y >= stickRect.top && y <= stickRect.bottom;
-      if (ownedByStick || inside) return { buttons: stickButtons(x, y, stickRect), track: true, stick: true };
+      if (ownedByStick || inside) return { buttons: stickButtons(x, y, stickRect, rotation), track: true, stick: true };
     }
     if (ownedByStick) return { buttons: new Set(), track: true, stick: true };
 
@@ -227,7 +228,7 @@ export function TouchControls({ enabled, running, profile, onButton, onRunToggle
   return (
     <div
       ref={rootRef}
-      className="touch-controls"
+      className={`touch-controls touch-controls--${profile}`}
       aria-label="터치 컨트롤러"
       onPointerDown={(event) => {
         if (event.pointerType === "touch") return;

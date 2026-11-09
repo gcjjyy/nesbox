@@ -22,13 +22,14 @@ export function stickButtons(
   x: number,
   y: number,
   rect: Pick<DOMRect, "left" | "top" | "width" | "height">,
+  rotation = 0,
 ): Set<NesboxButton> {
   const radius = Math.min(rect.width, rect.height) / 2;
   if (radius <= 0) return new Set();
   const dx = (x - (rect.left + rect.width / 2)) / radius;
   const dy = (y - (rect.top + rect.height / 2)) / radius;
   if (Math.hypot(dx, dy) <= STICK_DEADZONE) return new Set();
-  const angle = (Math.atan2(dy, dx) + 2 * Math.PI) % (2 * Math.PI);
+  const angle = (Math.atan2(dy, dx) - rotation * Math.PI / 180 + 2 * Math.PI) % (2 * Math.PI);
   const sector = Math.round(angle / (Math.PI / 4)) % SECTORS.length;
   return new Set(SECTORS[sector]);
 }

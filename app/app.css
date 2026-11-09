@@ -28,7 +28,7 @@ html,
 body {
   margin: 0;
   width: 100%;
-  min-width: 320px;
+  min-width: 0;
   height: 100%;
   overflow: hidden;
   background: var(--bg);
@@ -2452,3 +2452,129 @@ button {
   --cap: 28px;
   flex-wrap: nowrap;
 }
+
+/* Fullscreen keeps the game and controls in the same orientation, including iPhone's page mode. */
+.emulator-stage__surface { display: contents; }
+
+.touch-controls__cluster.touch-controls__cluster--face-mame {
+  --arcade-key: clamp(36px, 12vw, 58px);
+  grid-template-columns: repeat(3, var(--arcade-key));
+  grid-template-rows: repeat(2, var(--arcade-key));
+  gap: 6px;
+  width: auto;
+}
+.touch-controls__cluster.touch-controls__cluster--face-mame .touch-button {
+  width: var(--arcade-key);
+  min-width: 0;
+  height: var(--arcade-key);
+}
+@media (max-width: 760px) {
+  .touch-controls--mame {
+    width: min(100%, 420px);
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-inline: 8px;
+  }
+  .touch-controls--mame .touch-controls__cluster--dpad {
+    width: min(150px, 40vw);
+    height: min(150px, 40vw);
+  }
+}
+
+.emulator-stage.emulator-stage--fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: block;
+  width: 100%;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  background: #030404;
+  overflow: hidden;
+  touch-action: none;
+}
+.emulator-stage--fullscreen .emulator-stage__surface {
+  position: absolute;
+  display: block;
+  left: 50%;
+  top: 50%;
+  width: var(--fullscreen-width);
+  height: var(--fullscreen-height);
+  transform: translate(-50%, -50%) rotate(var(--fullscreen-rotation));
+  container-type: size;
+}
+.emulator-stage--fullscreen .screen-slot {
+  position: absolute;
+  inset: 0;
+}
+.emulator-stage--fullscreen .screen-bezel {
+  width: min(100%, calc(100cqh * var(--screen-width) / var(--screen-height)));
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.fullscreen-exit {
+  position: absolute;
+  z-index: 6;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  width: 44px;
+  height: 44px;
+  background: rgba(20, 25, 25, .75);
+}
+.emulator-stage--fullscreen .touch-controls {
+  --overlay-key: clamp(36px, 11cqw, 58px);
+  position: absolute;
+  z-index: 4;
+  inset: auto 0 0;
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0 max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  pointer-events: none;
+}
+.emulator-stage--fullscreen .touch-controls > * { pointer-events: auto; }
+.emulator-stage--fullscreen .touch-controls__center {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  gap: 6px;
+}
+.emulator-stage--fullscreen .touch-controls__cluster--dpad {
+  grid-column: 1;
+  grid-row: 2;
+  width: clamp(108px, 34cqw, 150px);
+  height: clamp(108px, 34cqw, 150px);
+}
+.emulator-stage--fullscreen .touch-controls__cluster--face {
+  grid-column: 2;
+  grid-row: 2;
+  width: auto;
+  grid-template-columns: repeat(2, var(--overlay-key));
+  grid-template-rows: repeat(2, var(--overlay-key));
+  gap: 6px;
+}
+.emulator-stage--fullscreen .touch-controls__cluster--face-mame {
+  grid-template-columns: repeat(3, var(--overlay-key));
+}
+.emulator-stage--fullscreen .touch-controls__cluster--face .touch-button {
+  width: var(--overlay-key);
+  min-width: 0;
+  height: var(--overlay-key);
+}
+.emulator-stage--fullscreen .touch-controls__cluster--face .touch-button--combo { width: 100%; }
+.emulator-stage--fullscreen .touch-button,
+.emulator-stage--fullscreen .touch-action {
+  background-color: rgba(35, 42, 42, .55);
+  border-color: rgba(230, 235, 228, .4);
+  text-shadow: 0 1px 3px #000;
+}
+.emulator-stage--fullscreen .touch-button--pressed { background-color: rgba(217, 72, 65, .7); }
+.emulator-stage--fullscreen .touch-controls__cluster--dpad { background-color: rgba(35, 42, 42, .35); }
+.emulator-stage--fullscreen .touch-button--wide { width: 62px; min-width: 0; height: 34px; }
+.emulator-stage--fullscreen .touch-action { width: 32px; height: 34px; }
+.emulator-stage--fullscreen .audio-unlock { z-index: 5; }

@@ -1,5 +1,6 @@
 import { useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type Ref } from "react";
-import { Volume2 } from "lucide-react";
+import { Minimize, Volume2 } from "lucide-react";
+import { useGameFullscreen } from "../lib/use-game-fullscreen";
 import type { NesboxButton, NesboxCore, EmulatorPhase } from "../lib/core-contract";
 import {
   controlProfileForGame,
@@ -103,6 +104,7 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
   const [inputProfile, setInputProfile] = useState<ControlProfileId>("nes");
   const [screenPixels, setScreenPixels] = useState(screenSizeForSystem("nes"));
   const [touchSurface, setTouchSurface] = useState(false);
+  const fullscreenView = useGameFullscreen(shellRef, screenPixels, touchSurface);
   const [hasSavedState, setHasSavedState] = useState(false);
   const audioState = useAudioSessionState();
   const activeAudioState = screenSystem === "arcade" ? (arcadeAudioRunning ? "running" : "locked") : audioState;
@@ -504,9 +506,8 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
   }
 
   async function fullscreen() {
-    const node = shellRef.current;
-    if (!node || document.fullscreenElement) return;
-    await node.requestFullscreen();
+    releaseAllTrackedInput();
+    await fullscreenView.toggle();
   }
 
   async function unlockAudio() {
@@ -594,57 +595,75 @@ export function EmulatorStage({ settings, inputSuspended, onPhaseChange, onStatu
     "--screen-aspect": `${screenPixels.width} / ${screenPixels.height}`,
     "--screen-width": screenPixels.width,
     "--screen-height": screenPixels.height,
+    "--fullscreen-width": `${fullscreenView.layout.width}px`,
+    "--fullscreen-height": `${fullscreenView.layout.height}px`,
+    "--fullscreen-rotation": `${fullscreenView.layout.rotation}deg`,
   } as CSSProperties;
 
   return (
     <section
       ref={shellRef}
-      className={`emulator-stage emulator-stage--system-${screenSystem} ${settings.integerScale ? "emulator-stage--integer" : ""}`}
+      className={`emulator-stage emulator-stage--system-${screenSystem} ${settings.integerScale ? "emulator-stage--integer" : ""} ${fullscreenView.active ? "emulator-stage--fullscreen" : ""}`}
       style={screenStyle}
+      data-fullscreen-orientation={fullscreenView.active ? fullscreenView.layout.orientation : undefined}
     >
-      <div className="screen-slot">
-        <div className="screen-bezel">
-          <div className="screen-viewport">
-            <canvas ref={canvasRef} className="game-canvas" width={screenSize.width} height={screenSize.height} />
-            <div ref={emulatorJsHostRef} className="emulatorjs-host" aria-label="아케이드 게임 화면" />
-            {phase === "idle" && (
-              <div className="stage-empty">
-                <strong>Load ROM</strong>
-                <span>NES 또는 아케이드 게임을 브라우저에서 직접 실행합니다.</span>
+      <div className="emulator-stage__surface">
+        {fullscreenView.active && (
+          <button
+            type="button"
+            className="fullscreen-exit icon-button"
+            onClick={() => { releaseAllTrackedInput(); void fullscreenView.exit(); }}
+            aria-label="전체 화면 종료"
+            title="전체 화면 종료"
+          >
+            <Minimize size={20} aria-hidden />
+          </button>
+        )}
+        <div className="screen-slot">
+          <div className="screen-bezel">
+            <div className="screen-viewport">
+              <canvas ref={canvasRef} className="game-canvas" width={screenSize.width} height={screenSize.height} />
+              <div ref={emulatorJsHostRef} className="emulatorjs-host" aria-label="아케이드 게임 화면" />
+              {phase === "idle" && (
+                <div className="stage-empty">
+                  <strong>Load ROM</strong>
+                  <span>NES 또는 아케이드 게임을 브라우저에서 직접 실행합니다.</span>
+                </div>
+              )}
+              {phase === "loading-core" && <GameLoadingOverlay progress={loadProgress} />}
+            </div>
+            {audioPromptVisible && (
+              <div className="audio-unlock">
+                <button
+                  type="button"
+                  className="audio-unlock__button"
+                  onClick={() => void unlockAudio()}
+                  disabled={audioUnlocking}
+                >
+                  <Volume2 size={18} strokeWidth={1.8} aria-hidden />
+                  <span>{audioUnlocking ? "음소거 해제 중" : "탭하여 음소거 해제"}</span>
+                </button>
               </div>
             )}
-            {phase === "loading-core" && <GameLoadingOverlay progress={loadProgress} />}
           </div>
-          {audioPromptVisible && (
-            <div className="audio-unlock">
-              <button
-                type="button"
-                className="audio-unlock__button"
-                onClick={() => void unlockAudio()}
-                disabled={audioUnlocking}
-              >
-                <Volume2 size={18} strokeWidth={1.8} aria-hidden />
-                <span>{audioUnlocking ? "음소거 해제 중" : "탭하여 음소거 해제"}</span>
-              </button>
-            </div>
-          )}
         </div>
+        <TouchControls
+          rotation={fullscreenView.active ? fullscreenView.layout.rotation : 0}
+          enabled={settings.touchControls && touchSurface && !inputSuspended}
+          running={phase === "running"}
+          profile={inputProfile}
+          onButton={onTouchButton}
+          onRunToggle={toggleRun}
+          onReset={reset}
+          canLoad={hasSavedState}
+          onSave={() => {
+            saveState().catch((err) => onStatus(statusFromError(err)));
+          }}
+          onLoad={() => {
+            loadState().catch((err) => onStatus(statusFromError(err)));
+          }}
+        />
       </div>
-      <TouchControls
-        enabled={settings.touchControls && touchSurface && !inputSuspended}
-        running={phase === "running"}
-        profile={inputProfile}
-        onButton={onTouchButton}
-        onRunToggle={toggleRun}
-        onReset={reset}
-        canLoad={hasSavedState}
-        onSave={() => {
-          saveState().catch((err) => onStatus(statusFromError(err)));
-        }}
-        onLoad={() => {
-          loadState().catch((err) => onStatus(statusFromError(err)));
-        }}
-      />
     </section>
   );
 }

@@ -3,6 +3,7 @@ import {
   Gamepad2,
   Settings,
   Volume2,
+  Maximize,
 } from "lucide-react";
 import { version } from "../../package.json";
 import {
@@ -31,6 +32,7 @@ export function Toolbar({
   mode,
   onHelp,
   onSettings,
+  onFullscreen,
 }: ToolbarProps) {
   return (
     <header className="toolbar">
@@ -48,6 +50,11 @@ export function Toolbar({
         <small>v{version}</small>
       </div>
       <div className="toolbar__actions">
+        {mode === "player" && (
+          <button type="button" className="icon-button" onClick={onFullscreen} title="전체 화면" aria-label="전체 화면">
+            <Maximize {...ICON} />
+          </button>
+        )}
         {mode === "player" && (
           <span className="toolbar__mode" aria-label="플레이 모드">PLAY</span>
         )}
