@@ -2583,3 +2583,11 @@ button {
 .emulator-stage--fullscreen[data-fullscreen-orientation="portrait"] .touch-controls--mame {
   --overlay-key: clamp(36px, 14cqw, 64px);
 }
+
+.emulator-stage--fullscreen[data-fullscreen-orientation="portrait"] .touch-controls__center {
+  grid-row: 1;
+}
+.emulator-stage--fullscreen[data-fullscreen-orientation="portrait"] .touch-controls__cluster--dpad,
+.emulator-stage--fullscreen[data-fullscreen-orientation="portrait"] .touch-controls__cluster--face {
+  grid-row: 2;
+}
