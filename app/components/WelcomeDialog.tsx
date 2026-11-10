@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Gamepad2, Save, Smartphone, Volume2 } from "lucide-react";
+import { Gamepad2, Maximize, Save, Smartphone, Volume2 } from "lucide-react";
 import { markWelcomed, needsWelcome } from "../lib/first-visit";
 import type { KeyboardBindings } from "../lib/control-profiles";
 import { hasTouchSurface } from "../lib/touch-surface";
@@ -71,6 +71,10 @@ export function WelcomeDialog({ bindings }: { bindings: KeyboardBindings }) {
             <li>
               <Save {...ICON} />
               가운데 버튼으로 일시정지, 리셋, 상태 저장 / 불러오기.
+            </li>
+            <li>
+              <Maximize {...ICON} />
+              <span>플레이 화면의 전체 화면 버튼으로 화면을 크게 볼 수 있어요. 모바일에서는 <strong>화면을 세로로 고정(자동 회전 끄기)</strong>한 뒤, 기기를 가로로 눕혀 플레이해 주세요.</span>
             </li>
             <li>
               <Volume2 {...ICON} />

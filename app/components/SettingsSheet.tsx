@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { ArrowLeft, Keyboard, Monitor, RotateCcw, Smartphone, Volume2, X } from "lucide-react";
+import { ArrowLeft, Keyboard, Maximize, Monitor, RotateCcw, Smartphone, Volume2, X } from "lucide-react";
 import type { NesboxButton } from "../lib/core-contract";
 import {
   assignKey,
@@ -186,6 +186,12 @@ export function SettingsSheet({ open, settings, onChange, onClose }: SettingsShe
               onChange={(event) => onChange({ ...settings, touchControls: event.target.checked })}
             />
           </label>
+          <div className="keyboard-settings">
+            <div className="keyboard-settings__heading">
+              <span><Maximize {...ICON} />전체 화면</span>
+              <small>플레이 화면의 전체 화면 버튼으로 화면을 크게 볼 수 있어요. 모바일에서는 <strong>화면을 세로로 고정(자동 회전 끄기)</strong>한 뒤, 기기를 가로로 눕혀 플레이해 주세요.</small>
+            </div>
+          </div>
           <div className="keyboard-settings">
             <div className="keyboard-settings__heading">
               <span><Keyboard {...ICON} />키보드</span>
